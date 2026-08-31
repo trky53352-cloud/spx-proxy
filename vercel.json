@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/spx-chain.js": {
+      "maxDuration": 10
+    }
+  }
+}
