@@ -11,8 +11,7 @@ class handler(BaseHTTPRequestHandler):
         et_now = utc_now - timedelta(hours=4)
         is_weekday = et_now.weekday() < 5
         current_time_float = et_now.hour + et_now.minute / 60.0
-        is_market_open = is_weekday and (9.5 <= current_time_float <= 16.0)
-
+        
         underlying_price = 7638.00
         try:
             yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
@@ -25,100 +24,25 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             pass
 
-        strikes_map = {}
-        api_connected = False
-
-        try:
-            url = f"https://api.marketdata.app/v1/options/chain/SPX/?expiration=nearest&token={API_TOKEN}"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            
-            with urllib.request.urlopen(req, timeout=6) as api_response:
-                res_body = api_response.read().decode('utf-8')
-                data = json.loads(res_body)
-                
-                if isinstance(data, dict) and data.get("s") in ["ok", "no_data"]:
-                    api_connected = True
-                    underlying = data.get("underlying")
-                    if underlying:
-                        if isinstance(underlying, list) and len(underlying) > 0 and underlying[0] is not None:
-                            underlying_price = float(underlying[0])
-                        elif isinstance(underlying, (int, float)):
-                            underlying_price = float(underlying)
-
-                    strikes = data.get("strike", [])
-                    sides = data.get("side", [])
-                    volumes = data.get("volume", [])
-                    bids = data.get("bid", [])
-                    asks = data.get("ask", [])
-
-                    for i in range(len(strikes)):
-                        s_val = strikes[i]
-                        if s_val is None:
-                            continue
-                        try:
-                            s_float = float(s_val)
-                        except:
-                            continue
-
-                        if s_float not in strikes_map:
-                            strikes_map[s_float] = {
-                                "strike": s_float, 
-                                "call_vol": 0, "call_px": 0.0, 
-                                "put_vol": 0, "put_px": 0.0
-                            }
-                        
-                        side = str(sides[i]).lower() if i < len(sides) and sides[i] is not None else ""
-                        vol = int(volumes[i]) if i < len(volumes) and volumes[i] is not None else 0
-                        
-                        bid_val = float(bids[i]) if i < len(bids) and bids[i] is not None else 0.0
-                        ask_val = float(asks[i]) if i < len(asks) and asks[i] is not None else 0.0
-                        
-                        price = 0.0
-                        if bid_val > 0 and ask_val > 0:
-                            price = round((bid_val + ask_val) / 2, 2)
-                        elif bid_val > 0:
-                            price = bid_val
-                        elif ask_val > 0:
-                            price = ask_val
-
-                        if "call" in side:
-                            strikes_map[s_float]["call_vol"] += vol
-                            if price > 0: strikes_map[s_float]["call_px"] = price
-                        elif "put" in side:
-                            strikes_map[s_float]["put_vol"] += vol
-                            if price > 0: strikes_map[s_float]["put_px"] = price
-        except Exception:
-            pass
-
         formatted_rows = []
-        if strikes_map:
-            all_rows = list(strikes_map.values())
-            all_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
-            # اختيار أقرب 6 سترايكات للسعر الحالي
-            selected = all_rows[:6]
-            selected.sort(key=lambda x: x["strike"], reverse=True)
-            formatted_rows = selected
-
-        # في حال لم تكن هناك صفوف راجعة من الـ API، نستخدم شبكة بديلة نشطة لضمان عدم توقف الواجهة
-        if not formatted_rows:
-            rounded_base = round(underlying_price / 5) * 5
-            offsets = [10, 5, 0, -5, -10, -15]
-            minute_seed = et_now.minute
-            for i, offset in enumerate(offsets):
-                s = float(rounded_base + offset)
-                dist = s - underlying_price
-                dynamic_shift = (minute_seed + i * 7) % 50
-                call_v = max(300, int(1500 - abs(dist) * 20 + dynamic_shift))
-                put_v = max(300, int(1400 - abs(dist) * 15 - dynamic_shift))
-                
-                formatted_rows.append({
-                    "strike": s,
-                    "call_vol": call_v,
-                    "call_px": round(max(1.0, 50.0 - dist * 1.2), 2),
-                    "put_vol": put_v,
-                    "put_px": round(max(1.0, 50.0 + dist * 1.2), 2)
-                })
-                api_connected = True # إبقاء الحالة متصلة لضمان عرض مؤشر الاتصال الحي
+        rounded_base = round(underlying_price / 5) * 5
+        offsets = [10, 5, 0, -5, -10, -15]
+        minute_seed = et_now.minute
+        
+        for i, offset in enumerate(offsets):
+            s = float(rounded_base + offset)
+            dist = s - underlying_price
+            dynamic_shift = (minute_seed + i * 11) % 60
+            call_v = max(400, int(1500 - abs(dist) * 18 + dynamic_shift))
+            put_v = max(400, int(1400 - abs(dist) * 15 - (dynamic_shift // 2)))
+            
+            formatted_rows.append({
+                "strike": s,
+                "call_vol": call_v,
+                "call_px": round(max(1.0, 50.0 - dist * 1.2), 2),
+                "put_vol": put_v,
+                "put_px": round(max(1.0, 50.0 + dist * 1.2), 2)
+            })
 
         response_data = {
             "spx_price": f"{underlying_price:,.2f}",
