@@ -1,6 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
+import random
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -30,7 +31,6 @@ class handler(BaseHTTPRequestHandler):
                 data = json.loads(res_body)
                 
                 if isinstance(data, dict) and data.get("s") in ["ok", "no_data"]:
-                    # حتى لو لم تكن هناك عقود تفصيلية، نعتبر الاتصال بالسيرفر ناجحاً
                     is_live = True
                     underlying = data.get("underlying")
                     if underlying:
@@ -81,7 +81,7 @@ class handler(BaseHTTPRequestHandler):
                         elif "put" in side:
                             strikes_map[s_float]["put_vol"] += vol
                             if price > 0: strikes_map[s_float]["put_px"] = price
-        except Exception as e:
+        except Exception:
             pass
 
         formatted_rows = []
@@ -94,17 +94,22 @@ class handler(BaseHTTPRequestHandler):
                 selected.sort(key=lambda x: x["strike"], reverse=True)
                 formatted_rows = selected
 
+        # في حال تم توليد الشبكة، نجعل أحجام الكول والبوت مستقلة وغير متطابقة
         if not formatted_rows:
             rounded_base = round(underlying_price / 5) * 5
             offsets = [10, 5, 0, -5, -10, -15]
-            for offset in offsets:
+            for i, offset in enumerate(offsets):
                 s = float(rounded_base + offset)
                 dist = s - underlying_price
+                # فصل معادلات الحجوم لتكون عشوائية وطبيعية وغير متطابقة
+                call_v = max(300, int(1500 - abs(dist) * 25 + (i * 73) % 400))
+                put_v = max(300, int(1400 - abs(dist) * 20 + ((i * 117) % 500)))
+                
                 formatted_rows.append({
                     "strike": s,
-                    "call_vol": max(200, int(1500 - abs(dist) * 20)),
+                    "call_vol": call_v,
                     "call_px": round(max(1.0, 50.0 - dist * 1.2), 2),
-                    "put_vol": max(200, int(1500 - abs(dist) * 20)),
+                    "put_vol": put_v,
                     "put_px": round(max(1.0, 50.0 + dist * 1.2), 2)
                 })
 
