@@ -4,7 +4,7 @@ import urllib.request
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        API_TOKEN = "OFBBWEVfdkM4ChlxS0N6cm9GUzhyYWtWViZLUXNb1d6QUYTWmILTW1nbz0"
+        API_TOKEN = "VUpqc1VmNjhpPrzh2Ti14VnFFNWJiCjU9LdE5oQTV6TzhBQjhRZ25OdmNTT0"
         try:
             url = "https://api.marketdata.app/v1/options/chain/SPX/"
             req = urllib.request.Request(
