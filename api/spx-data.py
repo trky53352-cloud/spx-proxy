@@ -5,25 +5,25 @@ import urllib.request
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
-        
-        # بيانات افتراضية مباشرة ومحدثة لتظهر فوراً دون أي تعليق أو فراغ
-        formatted_rows = [
-            {"strike": 7670.0, "call_vol": 289, "call_px": 72.9, "put_vol": 110, "put_px": 45.5},
-            {"strike": 7665.0, "call_vol": 898, "call_px": 75.7, "put_vol": 240, "put_px": 48.2},
-            {"strike": 7660.0, "call_vol": 971, "call_px": 78.6, "put_vol": 530, "put_px": 51.0},
-            {"strike": 7655.0, "call_vol": 241, "call_px": 81.5, "put_vol": 890, "put_px": 54.3},
-            {"strike": 7650.0, "call_vol": 4532, "call_px": 84.5, "put_vol": 1250, "put_px": 57.8},
-            {"strike": 7645.0, "call_vol": 4824, "call_px": 87.6, "put_vol": 2100, "put_px": 61.2}
-        ]
-
         try:
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             
-            with urllib.request.urlopen(req, timeout=5) as api_response:
+            with urllib.request.urlopen(req, timeout=10) as api_response:
                 res_body = api_response.read().decode('utf-8')
                 data = json.loads(res_body)
                 
+                # استخراج السعر الحقيقي للـ SPX من الـ API مباشرة إذا وجد، وإلا نستخدم قيمة افتراضية ديناميكية
+                underlying_price = 7658.0
+                if isinstance(data, dict):
+                    # محاولة استخراج السعر المباشر من الرد
+                    underlying = data.get("underlying")
+                    if underlying:
+                        if isinstance(underlying, list) and len(underlying) > 0 and underlying[0] is not None:
+                            underlying_price = float(underlying[0])
+                        elif isinstance(underlying, (int, float)):
+                            underlying_price = float(underlying)
+
                 strikes_map = {}
                 if isinstance(data, dict):
                     strikes = data.get("strike", [])
@@ -54,23 +54,39 @@ class handler(BaseHTTPRequestHandler):
                             strikes_map[s_float]["put_vol"] += vol
                             if bid > 0: strikes_map[s_float]["put_px"] = bid
 
-                    api_rows = list(strikes_map.values())
-                    if api_rows:
-                        api_rows.sort(key=lambda x: abs(x["strike"] - 7658.0))
-                        if len(api_rows) >= 6:
-                            formatted_rows = api_rows[:6]
-                            formatted_rows.sort(key=lambda x: x["strike"], reverse=True)
+                all_rows = list(strikes_map.values())
+                
+                # إذا لم تتوفر صفوف من الـ API، ننشئها بناءً على السعر الحقيقي المتحرك
+                if not all_rows:
+                    base_s = round(underlying_price / 5) * 5
+                    for offset in [10, 5, 0, -5, -10, -15]:
+                        s = base_s + offset
+                        all_rows.append({
+                            "strike": s,
+                            "call_vol": 200 + abs(offset)*20,
+                            "put_vol": 150 + abs(offset)*15,
+                            "call_px": 50.0 + offset,
+                            "put_px": 45.0 - offset
+                        })
 
-        except Exception:
-            pass # في حال حدوث أي انقطاع من الـ API ستعمل القائمة المباشرة الاحتياطية فوراً
+                # اختيار أقرب 6 سترايكات للسعر الحقيقي المتحرك
+                all_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
+                formatted_rows = all_rows[:6]
+                formatted_rows.sort(key=lambda x: x["strike"], reverse=True)
 
-        response_data = {
-            "spx_price": "7,658.00",
-            "rows": formatted_rows
-        }
-        
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-        self.end_headers()
-        self.wfile.write(json.dumps(response_data).encode('utf-8'))
+                response_data = {
+                    "spx_price": f"{underlying_price:,.2f}",
+                    "rows": formatted_rows
+                }
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+                self.end_headers()
+                self.wfile.write(json.dumps(response_data).encode('utf-8'))
+                
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
