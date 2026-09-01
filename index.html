@@ -23,11 +23,21 @@
             <div id="spx-price" class="text-3xl font-black text-amber-400 tracking-wider">7,626.00</div>
         </div>
 
+        <!-- جدول السترايكات -->
         <div class="flex flex-col gap-2" id="rows-container">
             <!-- تعبئة تلقائية -->
         </div>
 
-        <div class="text-center text-[11px] text-gray-500 pt-2 border-t border-gray-800 flex justify-between">
+        <!-- مربع المجاميع الإجمالية -->
+        <div class="bg-[#111827] border border-gray-800 rounded-xl p-3 flex justify-between items-center text-xs">
+            <span class="text-gray-400 font-bold">المجموع الإجمالي:</span>
+            <div class="flex gap-4">
+                <span class="text-emerald-400 font-bold">C: <span id="total-calls">--</span></span>
+                <span class="text-rose-400 font-bold">P: <span id="total-puts">--</span></span>
+            </div>
+        </div>
+
+        <div class="text-center text-[11px] text-gray-500 pt-1 flex justify-between">
             <span>التحديث التلقائي</span>
             <span class="text-emerald-400 font-medium">كل دقيقة (1m)</span>
         </div>
@@ -45,6 +55,9 @@
                 const data = await response.json();
 
                 document.getElementById('spx-price').innerText = data.spx_price;
+                document.getElementById('total-calls').innerText = formatK(data.total_call_vol || 0);
+                document.getElementById('total-puts').innerText = formatK(data.total_put_vol || 0);
+
                 const container = document.getElementById('rows-container');
                 container.innerHTML = '';
 
@@ -78,7 +91,6 @@
         }
 
         fetchSPXData();
-        // التحديث كل دقيقة (60,000 ميللي ثانية)
         setInterval(fetchSPXData, 60 * 1000);
     </script>
 </body>
