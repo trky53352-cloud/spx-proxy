@@ -1,6 +1,8 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
+import random
+import time
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -8,17 +10,18 @@ class handler(BaseHTTPRequestHandler):
         
         underlying_price = 7658.00
         strikes_map = {}
+        has_valid_data = False
 
+        # محاولة جلب البيانات الحية من الـ API
         try:
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             
-            with urllib.request.urlopen(req, timeout=6) as api_response:
+            with urllib.request.urlopen(req, timeout=5) as api_response:
                 res_body = api_response.read().decode('utf-8')
                 data = json.loads(res_body)
                 
                 if isinstance(data, dict):
-                    # جلب السعر الأساسي الحقيقي إن توفر
                     underlying = data.get("underlying")
                     if underlying:
                         if isinstance(underlying, list) and len(underlying) > 0 and underlying[0] is not None:
@@ -62,29 +65,46 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             pass
 
-        # تجهيز الصفوف بناءً على البيانات الحقيقية القادمة من الـ API فقط
-        formatted_rows = []
+        # التحقق مما إذا كانت البيانات حقيقية وتحتوي على قيم
         if strikes_map:
+            for s_data in strikes_map.values():
+                if s_data["call_vol"] > 0 or s_data["put_vol"] > 0 or s_data["call_px"] > 0 or s_data["put_px"] > 0:
+                    has_valid_data = True
+                    break
+
+        formatted_rows = []
+
+        if has_valid_data:
             all_rows = list(strikes_map.values())
-            # ترتيب حسب الأقرب لسعر المؤشر الحالي
             all_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
-            # اختيار أقرب 6 سترايكات
             selected = all_rows[:6]
-            # ترتيبها تنازلياً لتظهر العقود الأعلى في الأعلى
             selected.sort(key=lambda x: x["strike"], reverse=True)
             formatted_rows = selected
         else:
-            # قيم احتياطية فارغة في حال انقطاع الـ API تماماً
-            base_s = round(underlying_price / 5) * 5
-            for offset in [10, 5, 0, -5, -10, -15]:
+            current_minute = int(time.time() / 60)
+            random.seed(current_minute)
+            
+            rounded_base = round(underlying_price / 5) * 5
+            offsets = [10, 5, 0, -5, -10, -15]
+            
+            for offset in offsets:
+                s = rounded_base + offset
+                c_vol = random.randint(2200, 5800)
+                p_vol = random.randint(1800, 4900)
+                c_px = round(max(5.0, 80.0 - offset * 1.5 + random.uniform(-1.0, 1.0)), 1)
+                p_px = round(max(5.0, 50.0 + offset * 1.5 + random.uniform(-1.0, 1.0)), 1)
+                
                 formatted_rows.append({
-                    "strike": float(base_s + offset),
-                    "call_vol": 0, "call_px": 0.0,
-                    "put_vol": 0, "put_px": 0.0
+                    "strike": float(s),
+                    "call_vol": int(c_vol),
+                    "call_px": float(c_px),
+                    "put_vol": int(p_vol),
+                    "put_px": float(p_px)
                 })
 
         response_data = {
             "spx_price": f"{underlying_price:,.2f}",
+            "data_source": "Live API" if has_valid_data else "Fallback Simulation",
             "rows": formatted_rows
         }
         
