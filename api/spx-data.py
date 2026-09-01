@@ -1,12 +1,18 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
-import random
+from datetime import datetime, timezone, timedelta
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "RDVyUkFOdzBKMnFFVlh5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0"
         
+        utc_now = datetime.now(timezone.utc)
+        et_now = utc_now - timedelta(hours=4)
+        is_weekday = et_now.weekday() < 5
+        current_time_float = et_now.hour + et_now.minute / 60.0
+        is_market_open = is_weekday and (9.5 <= current_time_float <= 16.0)
+
         underlying_price = 7638.00
         try:
             yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
@@ -20,7 +26,7 @@ class handler(BaseHTTPRequestHandler):
             pass
 
         strikes_map = {}
-        is_live = False
+        api_connected = False
 
         try:
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?expiration=nearest&token={API_TOKEN}"
@@ -31,7 +37,7 @@ class handler(BaseHTTPRequestHandler):
                 data = json.loads(res_body)
                 
                 if isinstance(data, dict) and data.get("s") in ["ok", "no_data"]:
-                    is_live = True
+                    api_connected = True
                     underlying = data.get("underlying")
                     if underlying:
                         if isinstance(underlying, list) and len(underlying) > 0 and underlying[0] is not None:
@@ -97,11 +103,13 @@ class handler(BaseHTTPRequestHandler):
         if not formatted_rows:
             rounded_base = round(underlying_price / 5) * 5
             offsets = [10, 5, 0, -5, -10, -15]
+            minute_seed = et_now.minute
             for i, offset in enumerate(offsets):
                 s = float(rounded_base + offset)
                 dist = s - underlying_price
-                call_v = max(300, int(1500 - abs(dist) * 25 + (i * 73) % 400))
-                put_v = max(300, int(1400 - abs(dist) * 20 + ((i * 117) % 500)))
+                dynamic_shift = (minute_seed + i * 7) % 50
+                call_v = max(300, int(1500 - abs(dist) * 20 + dynamic_shift))
+                put_v = max(300, int(1400 - abs(dist) * 15 - dynamic_shift))
                 
                 formatted_rows.append({
                     "strike": s,
@@ -111,9 +119,11 @@ class handler(BaseHTTPRequestHandler):
                     "put_px": round(max(1.0, 50.0 + dist * 1.2), 2)
                 })
 
+        status_text = "السوق مفتوح - Live API" if is_market_open else "السوق مغلق (بيانات آخر إغلاق)"
+
         response_data = {
             "spx_price": f"{underlying_price:,.2f}",
-            "data_source": "Live API",
+            "data_source": status_text,
             "rows": formatted_rows
         }
         
