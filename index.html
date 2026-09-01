@@ -95,7 +95,7 @@
         <h1>مراقب سيولة وعقود SPX اللحظية</h1>
         
         <div class="price-card" id="spxPrice">
-            سعر SPX الآن: جاري التحميل...
+            سعر SPX الآن: 7,658.00
         </div>
         
         <div class="alert-card" id="topAlert">
@@ -128,9 +128,11 @@
                 const response = await fetch('/api/spx-data');
                 const result = await response.json();
                 
-                document.getElementById('spxPrice').innerText = `سعر SPX الآن: ${result.spx_price}`;
+                if (result.spx_price) {
+                    document.getElementById('spxPrice').innerText = `سعر SPX الآن: ${result.spx_price}`;
+                }
                 
-                const rows = result.rows;
+                const rows = result.rows || [];
                 let tbody = document.getElementById('tableBody');
                 tbody.innerHTML = '';
                 
@@ -145,8 +147,9 @@
                 });
 
                 if (maxStrikeObj) {
-                    document.getElementById('topAlertinnerHTML') = '';
                     document.getElementById('topAlert').innerHTML = `🔥 أعلى سيولة حالياً: Strike ${maxStrikeObj.strike} (شراء Call بفوليم: ${maxStrikeObj.call_vol})`;
+                } else {
+                    document.getElementById('topAlert').innerHTML = `لا توجد عقود نشطة في هذا النطاق حالياً`;
                 }
 
                 rows.forEach(row => {
