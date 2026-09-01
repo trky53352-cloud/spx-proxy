@@ -1,7 +1,5 @@
 {
-  "functions": {
-    "api/spx-chain.js": {
-      "maxDuration": 10
-    }
-  }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
