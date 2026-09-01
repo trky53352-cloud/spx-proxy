@@ -1,95 +1,119 @@
 from http.server import BaseHTTPRequestHandler
 import json
+import os
 import urllib.request
-import random
+import urllib.error
+
+# =========================================================
+# ضع مفتاح MarketData.app هنا (من لوحة تحكم حسابك - Trader plan)
+# https://www.marketdata.app/dashboard/
+# =========================================================
+API_KEY = os.environ.get("MARKETDATA_API_KEY", "ضع_مفتاحك_هنا")
+
+BASE_URL = "https://api.marketdata.app/v1"
+
+
+def _get(url):
+    """طلب GET موقّع بمفتاح MarketData.app"""
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {API_KEY}",
+            "Accept": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=6) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_live_price(symbol, fallback_price):
+    """
+    سعر حي فعلي (بدون تأخير 15 دقيقة) عبر endpoint الأسعار الحية
+    وليس endpoint الـ quotes المتأخر.
+    """
+    try:
+        data = _get(f"{BASE_URL}/stocks/prices/{symbol}/")
+        if data.get("s") == "ok" and data.get("mid"):
+            return round(float(data["mid"][0]), 2)
+    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, IndexError, ValueError) as e:
+        print(f"MarketData price error for {symbol}: {e}")
+    return fallback_price
+
+
+def fetch_option_chain(symbol, strikes_each_side=7):
+    """
+    يجلب سلسلة خيارات حقيقية (0DTE أو أقرب انتهاء) حول السعر الحالي،
+    ويرجع صفوف مجمّعة حسب السترايك: put/call volume + put/call mid price.
+    """
+    url = (
+        f"{BASE_URL}/options/chain/{symbol}/"
+        f"?dte=0&range=all&strikeLimit={strikes_each_side * 2}"
+    )
+    try:
+        data = _get(url)
+    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+        print(f"MarketData chain error for {symbol}: {e}")
+        return {}, 0, 0
+
+    if data.get("s") != "ok":
+        return {}, 0, 0
+
+    by_strike = {}
+    total_call_vol = 0
+    total_put_vol = 0
+
+    n = len(data.get("strike", []))
+    for i in range(n):
+        strike = data["strike"][i]
+        side = data["side"][i]
+        vol = data.get("volume", [0] * n)[i] or 0
+        oi = data.get("openInterest", [0] * n)[i] or 0
+        mid = data.get("mid", [0] * n)[i] or 0
+
+        row = by_strike.setdefault(strike, {
+            "strike": strike,
+            "call_vol": 0, "call_oi": 0, "call_px": 0.0,
+            "put_vol": 0, "put_oi": 0, "put_px": 0.0,
+        })
+
+        if side == "call":
+            row["call_vol"] = vol
+            row["call_oi"] = oi
+            row["call_px"] = round(mid, 2)
+            total_call_vol += vol
+        else:
+            row["put_vol"] = vol
+            row["put_oi"] = oi
+            row["put_px"] = round(mid, 2)
+            total_put_vol += vol
+
+    return by_strike, total_call_vol, total_put_vol
+
+
+def build_symbol_payload(symbol, fallback_price):
+    price = fetch_live_price(symbol, fallback_price)
+    by_strike, total_call_vol, total_put_vol = fetch_option_chain(symbol)
+
+    rows = sorted(by_strike.values(), key=lambda r: r["strike"], reverse=True)
+
+    return {
+        "price": f"{price:,.2f}",
+        "total_call_vol": total_call_vol,
+        "total_put_vol": total_put_vol,
+        "rows": rows,
+    }
+
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # مفاتيح Alpaca المباشرة الخاصة بك
-        API_KEY = "RDVyUkFOdzBKMnFFVlh5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0" # ملاحظة: تأكد من إدخال الـ Key ID هنا والـ Secret في الأسفل
-        API_SECRET = "YOUR_SECRET_KEY"
-        
-        # استخدام رابط الـ Live أو Paper (افتراضي Live Data endpoint)
-        BASE_URL = "https://data.alpaca.markets/v2/stocks"
-
-        def fetch_alpaca_price(symbol, fallback_price):
-            try:
-                url = f"{BASE_URL}/{symbol}/quotes/latest"
-                req = urllib.request.Request(url, headers={
-                    'APCA-API-KEY-ID': API_KEY,
-                    'APCA-API-SECRET-KEY': API_SECRET,
-                    'Accept': 'application/json'
-                })
-                with urllib.request.urlopen(req, timeout=3) as resp:
-                    data = json.loads(resp.read().decode('utf-8'))
-                    quote = data.get('quote', {})
-                    price = quote.get('ap') or quote.get('bp') or quote.get('p')
-                    if price:
-                        return float(price)
-            except Exception as e:
-                print(f"Alpaca Error for {symbol}: {e}")
-            return fallback_price
-
-        # جلب الأسعار اللحظية من Alpaca
-        spy_live = fetch_alpaca_price("SPY", 762.00)
-        spx_price = round(spy_live * 10, 2)
-        
-        qqq_price = fetch_alpaca_price("QQQ", 707.77)
-        ndx_price = round(qqq_price * 30.5, 2)
-
-        def generate_hybrid_rows(price, step, offsets):
-            base_strike = round(price / step) * step
-            rows = []
-            total_c = 0
-            total_p = 0
-            
-            for i, offset in enumerate(offsets):
-                s = float(base_strike + (offset * step))
-                dist = abs(s - price)
-                
-                call_v = int(max(25000, 150000 - (dist * 2000) + random.randint(-5000, 5000)))
-                put_v = int(max(20000, 130000 - (dist * 1800) + random.randint(-4000, 4000)))
-                
-                total_c += call_v
-                total_p += put_v
-                
-                rows.append({
-                    "strike": s,
-                    "call_vol": call_v,
-                    "call_px": round(max(0.5, 30.0 - (abs(offset) * 1.5)), 2),
-                    "put_vol": put_v,
-                    "put_px": round(max(0.5, 20.0 + (abs(offset) * 1.5)), 2)
-                })
-                
-            return total_c, total_p, rows
-
-        spx_tc, spx_tp, spx_rows = generate_hybrid_rows(spx_price, 5, [3, 2, 1, 0, -1, -2, -3])
-        ndx_tc, ndx_tp, ndx_rows = generate_hybrid_rows(ndx_price, 100, [3, 2, 1, 0, -1, -2, -3])
-        qqq_tc, qqq_tp, qqq_rows = generate_hybrid_rows(qqq_price, 2, [3, 2, 1, 0, -1, -2, -3])
-
         response_data = {
-            "spx": {
-                "price": f"{spx_price:,.2f}",
-                "total_call_vol": spx_tc,
-                "total_put_vol": spx_tp,
-                "rows": spx_rows
-            },
-            "ndx": {
-                "price": f"{ndx_price:,.2f}",
-                "total_call_vol": ndx_tc,
-                "total_put_vol": ndx_tp,
-                "rows": ndx_rows
-            },
-            "qqq": {
-                "price": f"{qqq_price:,.2f}",
-                "total_call_vol": qqq_tc,
-                "total_put_vol": qqq_tp,
-                "rows": qqq_rows
-            }
+            "spx": build_symbol_payload("SPX", 7620.00),
+            "ndx": build_symbol_payload("NDX", 25000.00),
+            "qqq": build_symbol_payload("QQQ", 707.77),
         }
-        
+
         self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header("Content-type", "application/json")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.end_headers()
-        self.wfile.write(json.dumps(response_data).encode('utf-8'))
+        self.wfile.write(json.dumps(response_data, ensure_ascii=False).encode("utf-8"))
