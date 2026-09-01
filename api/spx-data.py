@@ -1,20 +1,16 @@
 from http.server import BaseHTTPRequestHandler
 import json
-import os
 import urllib.request
 import urllib.error
 
 # =========================================================
-# ضع مفتاح MarketData.app هنا (من لوحة تحكم حسابك - Trader plan)
-# https://www.marketdata.app/dashboard/
+# مفتاح MarketData.app المباشر الخاص بك
 # =========================================================
-API_KEY = os.environ.get("MARKETDATA_API_KEY", "ضع_مفتاحك_هنا")
+API_KEY = "RDVyUkFOdzBKMnFFVlh5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0"
 
 BASE_URL = "https://api.marketdata.app/v1"
 
-
 def _get(url):
-    """طلب GET موقّع بمفتاح MarketData.app"""
     req = urllib.request.Request(
         url,
         headers={
@@ -25,33 +21,23 @@ def _get(url):
     with urllib.request.urlopen(req, timeout=6) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
-
 def fetch_live_price(symbol, fallback_price):
-    """
-    سعر حي فعلي (بدون تأخير 15 دقيقة) عبر endpoint الأسعار الحية
-    وليس endpoint الـ quotes المتأخر.
-    """
     try:
         data = _get(f"{BASE_URL}/stocks/prices/{symbol}/")
         if data.get("s") == "ok" and data.get("mid"):
             return round(float(data["mid"][0]), 2)
-    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, IndexError, ValueError) as e:
+    except Exception as e:
         print(f"MarketData price error for {symbol}: {e}")
     return fallback_price
 
-
 def fetch_option_chain(symbol, strikes_each_side=7):
-    """
-    يجلب سلسلة خيارات حقيقية (0DTE أو أقرب انتهاء) حول السعر الحالي،
-    ويرجع صفوف مجمّعة حسب السترايك: put/call volume + put/call mid price.
-    """
     url = (
         f"{BASE_URL}/options/chain/{symbol}/"
         f"?dte=0&range=all&strikeLimit={strikes_each_side * 2}"
     )
     try:
         data = _get(url)
-    except (urllib.error.URLError, urllib.error.HTTPError) as e:
+    except Exception as e:
         print(f"MarketData chain error for {symbol}: {e}")
         return {}, 0, 0
 
@@ -89,11 +75,9 @@ def fetch_option_chain(symbol, strikes_each_side=7):
 
     return by_strike, total_call_vol, total_put_vol
 
-
 def build_symbol_payload(symbol, fallback_price):
     price = fetch_live_price(symbol, fallback_price)
     by_strike, total_call_vol, total_put_vol = fetch_option_chain(symbol)
-
     rows = sorted(by_strike.values(), key=lambda r: r["strike"], reverse=True)
 
     return {
@@ -102,7 +86,6 @@ def build_symbol_payload(symbol, fallback_price):
         "total_put_vol": total_put_vol,
         "rows": rows,
     }
-
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
