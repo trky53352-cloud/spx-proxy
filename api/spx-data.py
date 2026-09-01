@@ -16,11 +16,10 @@ class handler(BaseHTTPRequestHandler):
                 strikes_map = {}
                 
                 if isinstance(data, dict):
-                    strikes = data.get("strike") or data.get("strikes") or []
-                    call_vol = data.get("callVolume") or data.get("volume") or []
-                    put_vol = data.get("putVolume") or []
-                    call_px = data.get("callBid") or data.get("bid") or []
-                    put_px = data.get("putBid") or []
+                    strikes = data.get("strike", [])
+                    sides = data.get("side", [])
+                    volumes = data.get("volume", [])
+                    bids = data.get("bid", [])
 
                     for i in range(len(strikes)):
                         strike_val = strikes[i]
@@ -32,38 +31,30 @@ class handler(BaseHTTPRequestHandler):
                         except:
                             continue
 
-                        c_vol = call_vol[i] if i < len(call_vol) and call_vol[i] is not None else 0
-                        p_vol = put_vol[i] if i < len(put_vol) and put_vol[i] is not None else 0
-                        c_px = call_px[i] if i < len(call_px) and call_px[i] is not None else 0.0
-                        p_px = put_px[i] if i < len(put_px) and put_px[i] is not None else 0.0
-
                         if strike_float not in strikes_map:
                             strikes_map[strike_float] = {
                                 "strike": strike_float,
-                                "call_vol": int(c_vol),
-                                "put_vol": int(p_vol),
-                                "call_px": float(c_px),
-                                "put_px": float(p_px)
+                                "call_vol": 0,
+                                "put_vol": 0,
+                                "call_px": 0.0,
+                                "put_px": 0.0
                             }
-                        else:
-                            strikes_map[strike_float]["call_vol"] += int(c_vol)
-                            strikes_map[strike_float]["put_vol"] += int(p_vol)
+                        
+                        side = str(sides[i]).lower() if i < len(sides) and sides[i] is not None else ""
+                        vol = volumes[i] if i < len(volumes) and volumes[i] is not None else 0
+                        bid = bids[i] if i < len(bids) and bids[i] is not None else 0.0
+
+                        if "call" in side:
+                            strikes_map[strike_float]["call_vol"] += int(vol)
+                            if bid > 0:
+                                strikes_map[strike_float]["call_px"] = float(bid)
+                        elif "put" in side:
+                            strikes_map[strike_float]["put_vol"] += int(vol)
+                            if bid > 0:
+                                strikes_map[strike_float]["put_px"] = float(bid)
 
                 all_rows = list(strikes_map.values())
                 
-                # بيانات احتياطية لضمان عدم ظهور الجدول فارغاً أبداً في حال تأخر أو انقطاع استجابة الـ API
-                if not all_rows:
-                    base_s = 7658.0
-                    for offset in [10, 5, 0, -5, -10, -15]:
-                        s = base_s + offset
-                        all_rows.append({
-                            "strike": s,
-                            "call_vol": 150 + abs(int(offset))*15,
-                            "put_vol": 120 + abs(int(offset))*10,
-                            "call_px": 50.0 + offset,
-                            "put_px": 45.0 - offset
-                        })
-
                 target_price = 7658.0
                 all_rows.sort(key=lambda x: abs(x["strike"] - target_price))
                 formatted_rows = all_rows[:6]
@@ -76,6 +67,8 @@ class handler(BaseHTTPRequestHandler):
                 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
+                # منع تخزين الكاش لضمان جلب البيانات بشكل مباشر ولحظي
+                self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
                 self.end_headers()
                 self.wfile.write(json.dumps(response_data).encode('utf-8'))
                 
