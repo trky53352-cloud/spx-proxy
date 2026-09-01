@@ -2,20 +2,31 @@ from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
 import random
-import time
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         
-        base_s = 7658.00
-        
-        # التدرج بـ قفزات خماسية (مثلاً: +10, +5, 0, -5, -10, -15)
+        # 1. جلب سعر SPX المباشر من مصدر حي وموثوق
+        underlying_price = 7658.00
+        try:
+            yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
+            yf_req = urllib.request.Request(yf_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(yf_req, timeout=3) as yf_resp:
+                yf_data = json.loads(yf_resp.read().decode('utf-8'))
+                price_val = yf_data.get('quoteResponse', {}).get('result', [{}])[0].get('regularMarketPrice')
+                if price_val:
+                    underlying_price = float(price_val)
+        except Exception:
+            pass
+
+        # 2. بناء السترايكات بقفزات خماسية مرتبطة بالسعر الحالي المباشر
+        rounded_base = round(underlying_price / 5) * 5
         formatted_rows = []
         offsets = [10, 5, 0, -5, -10, -15]
         
         for offset in offsets:
-            s = base_s + offset
+            s = rounded_base + offset
             c_vol = random.randint(2000, 5500)
             p_vol = random.randint(1500, 4500)
             c_px = round(max(5.0, 80.0 - offset * 1.5), 1)
@@ -29,11 +40,12 @@ class handler(BaseHTTPRequestHandler):
                 "put_px": float(p_px)
             })
 
+        # 3. محاولة دمج العقود الحية من marketdata.app إن توفرت
         try:
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             
-            with urllib.request.urlopen(req, timeout=5) as api_response:
+            with urllib.request.urlopen(req, timeout=4) as api_response:
                 res_body = api_response.read().decode('utf-8')
                 data = json.loads(res_body)
                 
@@ -69,7 +81,7 @@ class handler(BaseHTTPRequestHandler):
 
                     api_rows = list(strikes_map.values())
                     if api_rows:
-                        api_rows.sort(key=lambda x: abs(x["strike"] - base_s))
+                        api_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
                         if len(api_rows) >= 6:
                             formatted_rows = api_rows[:6]
                             formatted_rows.sort(key=lambda x: x["strike"], reverse=True)
@@ -77,7 +89,7 @@ class handler(BaseHTTPRequestHandler):
             pass
 
         response_data = {
-            "spx_price": f"{base_s:,.2f}",
+            "spx_price": f"{underlying_price:,.2f}",
             "rows": formatted_rows
         }
         
