@@ -14,7 +14,8 @@ class handler(BaseHTTPRequestHandler):
                 res_body = api_response.read().decode('utf-8')
                 data = json.loads(res_body)
                 
-                formatted_rows = []
+                strikes_map = {}
+                
                 if isinstance(data, dict):
                     strikes = data.get("strike", [])
                     call_vol = data.get("callVolume", [])
@@ -24,20 +25,33 @@ class handler(BaseHTTPRequestHandler):
 
                     for i in range(len(strikes)):
                         strike_val = strikes[i]
-                        if 7500 <= strike_val <= 7850:
-                            formatted_rows.append({
-                                "strike": strike_val,
-                                "call_vol": call_vol[i] if i < len(call_vol) else 0,
-                                "put_vol": put_vol[i] if i < len(put_vol) else 0,
-                                "call_px": call_px[i] if i < len(call_px) else 0,
-                                "put_px": put_px[i] if i < len(put_px) else 0
-                            })
+                        if strike_val is None:
+                            continue
+                        
+                        # تصفية السترايكات لتكون قريبة من السعر الحالي 7658 (مثلاً بين 7550 و 7750)
+                        if 7550 <= strike_val <= 7750:
+                            c_vol = call_vol[i] if i < len(call_vol) and call_vol[i] is not None else 0
+                            p_vol = put_vol[i] if i < len(put_vol) and put_vol[i] is not None else 0
+                            c_px = call_px[i] if i < len(call_px) and call_px[i] is not None else 0
+                            p_px = put_px[i] if i < len(put_px) and put_px[i] is not None else 0
 
+                            if strike_val not in strikes_map:
+                                strikes_map[strike_val] = {
+                                    "strike": strike_val,
+                                    "call_vol": int(c_vol),
+                                    "put_vol": int(p_vol),
+                                    "call_px": float(c_px),
+                                    "put_px": float(p_px)
+                                }
+                            else:
+                                strikes_map[strike_val]["call_vol"] += int(c_vol)
+                                strikes_map[strike_val]["put_vol"] += int(p_vol)
+
+                formatted_rows = list(strikes_map.values())
                 formatted_rows.sort(key=lambda x: x["strike"], reverse=True)
 
-                # إضافة spx_price بشكل صحيح ليتوافق مع الـ HTML
                 response_data = {
-                    "spx_price": "7,686.62",
+                    "spx_price": "7,658.00",
                     "rows": formatted_rows
                 }
                 
