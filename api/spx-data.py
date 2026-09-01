@@ -1,16 +1,15 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
-import os
 import random
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # استبدل هذه المفاتيح بقيم حسابك أو اجعلها تُقرأ من متغيرات البيئة
-        API_KEY = os.environ.get("APCA_API_KEY_ID", "YOUR_API_KEY")
-        API_SECRET = os.environ.get("APCA_API_SECRET_KEY", "YOUR_SECRET_KEY")
+        # مفاتيح Alpaca المباشرة الخاصة بك
+        API_KEY = "RDVyUkFOdzBKMnFFVlh5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0" # ملاحظة: تأكد من إدخال الـ Key ID هنا والـ Secret في الأسفل
+        API_SECRET = "YOUR_SECRET_KEY"
         
-        # استخدام رابط الـ Live أو Paper حسب حسابك (افتراضي Live Data endpoint)
+        # استخدام رابط الـ Live أو Paper (افتراضي Live Data endpoint)
         BASE_URL = "https://data.alpaca.markets/v2/stocks"
 
         def fetch_alpaca_price(symbol, fallback_price):
@@ -23,7 +22,6 @@ class handler(BaseHTTPRequestHandler):
                 })
                 with urllib.request.urlopen(req, timeout=3) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
-                    # استخراج سعر الـ Ask أو Bid أو الأخير من Alpaca
                     quote = data.get('quote', {})
                     price = quote.get('ap') or quote.get('bp') or quote.get('p')
                     if price:
@@ -32,7 +30,7 @@ class handler(BaseHTTPRequestHandler):
                 print(f"Alpaca Error for {symbol}: {e}")
             return fallback_price
 
-        # جلب الأسعار اللحظية الحقيقية من Alpaca
+        # جلب الأسعار اللحظية من Alpaca
         spy_live = fetch_alpaca_price("SPY", 762.00)
         spx_price = round(spy_live * 10, 2)
         
