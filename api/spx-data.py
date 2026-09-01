@@ -6,49 +6,33 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         
-        # 1. جلب سعر SPX المباشر والحقيقي من السوق لضمان الحركة الفورية
         underlying_price = 7658.00
-        try:
-            yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
-            yf_req = urllib.request.Request(yf_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(yf_req, timeout=4) as yf_resp:
-                yf_data = json.loads(yf_resp.read().decode('utf-8'))
-                price_val = yf_data.get('quoteResponse', {}).get('result', [{}])[0].get('regularMarketPrice')
-                if price_val:
-                    underlying_price = float(price_val)
-        except Exception:
-            pass
+        formatted_rows = [
+            {"strike": 7670.0, "call_vol": 2600, "call_px": 65.0, "put_vol": 1840, "put_px": 65.0},
+            {"strike": 7665.0, "call_vol": 3600, "call_px": 72.5, "put_vol": 2740, "put_px": 57.5},
+            {"strike": 7660.0, "call_vol": 4600, "call_px": 80.0, "put_vol": 3640, "put_px": 50.0},
+            {"strike": 7655.0, "call_vol": 4400, "call_px": 87.5, "put_vol": 3460, "put_px": 42.5},
+            {"strike": 7650.0, "call_vol": 3400, "call_px": 95.0, "put_vol": 2560, "put_px": 35.0},
+            {"strike": 7645.0, "call_vol": 2400, "call_px": 102.5, "put_vol": 1660, "put_px": 27.5}
+        ]
 
-        # 2. بناء السترايكات ديناميكياً بناءً على السعر الحقيقي الحالي
-        base_strike = round(underlying_price / 5) * 5
-        formatted_rows = []
-        offsets = [10, 5, 0, -5, -10, -15]
-        for offset in offsets:
-            s = base_strike + offset
-            dist = abs(s - underlying_price)
-            c_vol = int(max(100, 5000 - dist * 200))
-            p_vol = int(max(80, 4000 - dist * 180))
-            c_px = round(max(5.0, 80.0 - offset * 1.5), 1)
-            p_px = round(max(5.0, 50.0 + offset * 1.5), 1)
-            
-            formatted_rows.append({
-                "strike": float(s),
-                "call_vol": c_vol,
-                "call_px": c_px,
-                "put_vol": p_vol,
-                "put_px": p_px
-            })
-
-        # 3. محاولة دمج بيانات العقود الحية إن وجدت
         try:
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             
-            with urllib.request.urlopen(req, timeout=5) as api_response:
+            with urllib.request.urlopen(req, timeout=8) as api_response:
                 res_body = api_response.read().decode('utf-8')
                 data = json.loads(res_body)
                 
                 if isinstance(data, dict):
+                    # محاولة استخراج السعر الأساسي الحقيقي من الـ API
+                    underlying = data.get("underlying")
+                    if underlying:
+                        if isinstance(underlying, list) and len(underlying) > 0 and underlying[0] is not None:
+                            underlying_price = float(underlying[0])
+                        elif isinstance(underlying, (int, float)):
+                            underlying_price = float(underlying)
+
                     strikes = data.get("strike", [])
                     sides = data.get("side", [])
                     volumes = data.get("volume", [])
@@ -84,6 +68,7 @@ class handler(BaseHTTPRequestHandler):
                         if len(api_rows) >= 6:
                             formatted_rows = api_rows[:6]
                             formatted_rows.sort(key=lambda x: x["strike"], reverse=True)
+
         except Exception:
             pass
 
