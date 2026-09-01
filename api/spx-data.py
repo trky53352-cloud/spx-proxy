@@ -6,11 +6,10 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpPrzh2Ti14VnFFNWJiCjU9LdE5oQTV6TzhBQjhRZ25OdmNTT0"
         try:
-            url = "https://api.marketdata.app/v1/options/chain/SPX/"
-            req = urllib.request.Request(
-                url, 
-                headers={"Authorization": f"Bearer {API_TOKEN}"}
-            )
+            # تجربة إرسال التوكن عبر الـ Query Parameter إذا كان الـ Bearer يسبب مشكلة
+            url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
+            
+            req = urllib.request.Request(url)
             
             with urllib.request.urlopen(req, timeout=10) as api_response:
                 res_body = api_response.read().decode('utf-8')
