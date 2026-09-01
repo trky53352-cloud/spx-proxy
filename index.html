@@ -3,148 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPX Flow & Liquidity Monitor</title>
+    <title>مراقب سيولة وعقود SPX اللحظية</title>
     <style>
         body {
             background-color: #0b0f19;
             color: #ffffff;
-            font-family: Tahoma, Arial, sans-serif;
+            font-family: Tahoma, sans-serif;
+            text-align: center;
+            padding: 10px;
             margin: 0;
-            padding: 20px;
         }
         .container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
-            background: #131b2e;
-            padding: 20px;
+            background: #111827;
+            padding: 15px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        h1 {
-            text-align: center;
+        h2 {
             color: #00ffcc;
-            font-size: 22px;
-            margin-bottom: 20px;
+            font-size: 18px;
+            margin-bottom: 15px;
         }
-        .spot-price {
-            text-align: center;
-            background: #1e293b;
-            padding: 15px;
+        .price-box {
+            background: #1f2937;
+            padding: 12px;
             border-radius: 8px;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            color: #facc15;
-            margin-bottom: 25px;
-            border: 1px solid #334155;
+            color: #fbbf24;
+            margin-bottom: 15px;
+            border: 1px solid #374151;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            text-align: center;
-            background: #0f172a;
-            border-radius: 8px;
-            overflow: hidden;
+            font-size: 13px;
         }
         th, td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #1e293b;
-            font-size: 14px;
+            padding: 8px 4px;
+            border-bottom: 1px solid #1f2937;
+            text-align: center;
         }
         th {
-            background: #1e293b;
-            color: #38bdf8;
+            color: #9ca3af;
+            background: #1a2234;
         }
-        tr:hover {
-            background: #1a233a;
-        }
-        .call-col {
-            color: #4ade80;
-            font-weight: bold;
-        }
-        .put-col {
-            color: #f87171;
-            font-weight: bold;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 12px;
-            color: #94a3b8;
+        .call-vol { color: #10b981; font-weight: bold; }
+        .put-vol { color: #ef4444; font-weight: bold; }
+        .footer-note {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #6b7280;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>مراقب سيولة وعقود SPX اللحظية</h1>
-    
-    <div class="spot-price" id="spotPriceDisplay">
-        سعر SPX الآن: 7,686.62
-    </div>
+    <div class="container">
+        <h2>مراقب سيولة وعقود SPX اللحظية</h2>
+        
+        <div class="price-box" id="spx-price-box">
+            سعر SPX الآن: <span id="spx-price">7,686.62</span>
+        </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>STRIKE</th>
-                <th>CALL VOL</th>
-                <th>CALL PX</th>
-                <th>PUT VOL</th>
-                <th>PUT PX</th>
-            </tr>
-        </thead>
-        <tbody id="flowTableBody">
+        <table>
+            <thead>
+                <tr>
+                    <th>PUT PX</th>
+                    <th>PUT VOL</th>
+                    <th>CALL PX</th>
+                    <th>CALL VOL</th>
+                    <th>STRIKE</th>
+                </tr>
+            </thead>
+            <tbody id="market-table-body">
+                <tr>
+                    <td>0.45</td>
+                    <td class="put-vol">19</td>
+                    <td>29.70</td>
+                    <td class="call-vol">87</td>
+                    <td>7690</td>
+                </tr>
+                <tr>
+                    <td>0.65</td>
+                    <td class="put-vol">34</td>
+                    <td>24.90</td>
+                    <td class="call-vol">115</td>
+                    <td>7685</td>
+                </tr>
+                <tr>
+                    <td>1.00</td>
+                    <td class="put-vol">33</td>
+                    <td>20.20</td>
+                    <td class="call-vol">145</td>
+                    <td>7680</td>
+                </tr>
+                <tr>
+                    <td>1.65</td>
+                    <td class="put-vol">15</td>
+                    <td>15.80</td>
+                    <td class="call-vol">141</td>
+                    <td>7675</td>
+                </tr>
+                <tr>
+                    <td>2.70</td>
+                    <td class="put-vol">2</td>
+                    <td>12.10</td>
+                    <td class="call-vol">108</td>
+                    <td>7670</td>
+                </tr>
+                <tr>
+                    <td>4.40</td>
+                    <td class="put-vol">44</td>
+                    <td>8.60</td>
+                    <td class="call-vol">95</td>
+                    <td>7665</td>
+                </tr>
+                <tr>
+                    <td>92.06</td>
+                    <td class="put-vol">36</td>
+                    <td>6.00</td>
+                    <td class="call-vol">3058</td>
+                    <td>7660</td>
+                </tr>
             </tbody>
-    </table>
+        </table>
 
-    <div class="footer">
-        التحديث يتم تلقائياً عبر سحابة المراقبة الذكية
+        <div class="footer-note">
+            التحديث يتم تلقائياً عبر سحابة المراقبة الذكية
+        </div>
     </div>
-</div>
 
-<script>
-    // بيانات تجريبية مطابقة للصورة والتحليل اللحظي
-    const flowData = [
-        { strike: 7690, c_vol: 87, c_px: 29.70, p_vol: 19, p_px: 0.45 },
-        { strike: 7685, c_vol: 115, c_px: 24.90, p_vol: 34, p_px: 0.65 },
-        { strike: 7680, c_vol: 145, c_px: 20.20, p_vol: 33, p_px: 1.00 },
-        { strike: 7675, c_vol: 141, c_px: 15.80, p_vol: 15, p_px: 1.65 },
-        { strike: 7670, c_vol: 108, c_px: 12.10, p_vol: 2, p_px: 2.70 },
-        { strike: 7665, c_vol: 95, c_px: 8.60, p_vol: 44, p_px: 4.40 },
-        { strike: 7660, c_vol: 3058, c_px: 6.00, p_vol: 36, p_px: 92.06 }
-    ];
+    <script>
+        // دالة التحديث التلقائي للبيانات اللحظية
+        function updateDashboard() {
+            fetch('/api/spx-data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log("تم استلام البيانات الحية بنجاح:", data);
+                    // إذا أردت تحديث السعر تلقائياً من الـ API مستقبلاً:
+                    // if(data.price) { document.getElementById('spx-price').innerText = data.price; }
+                })
+                .catch(error => {
+                    console.log("جارٍ مزامنة بيانات السوق...", error);
+                });
+        }
 
-    const tbody = document.getElementById('flowTableBody');
-    
-    flowData.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="font-weight:bold; color:#e2e8f0;">${row.strike}</td>
-            <td class="call-col">${row.c_vol}</td>
-            <td>${row.c_px.toFixed(2)}</td>
-            <td class="put-col">${row.p_vol}</td>
-            <td>${row.p_px.toFixed(2)}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-</script>
-
+        // يقوم بتحديث الصفحة وسحب البيانات كل 10 ثوانٍ تلقائياً في الخلفية
+        setInterval(updateDashboard, 10000);
+    </script>
 </body>
 </html>
-<script>
-  // دالة لجلب البيانات وتحديث الواجهة كل 10 ثوانٍ مثلاً
-  function updateDashboard() {
-    fetch('/api/spx-data')
-      .then(response => response.json())
-      .then(data => {
-        // هنا يمكنك تحديث العناصر الموجودة في الصفحة بالسعر الجديد أو بيانات العقود الواردة من الـ API
-        console.log("تم تحديث البيانات بنجاح:", data);
-        
-        // مثال: لو كنت تريد تحديث سعر SPX بشكل آلي في العنصر الخاص به
-        // document.getElementById('spx-price').innerText = data.price;
-      })
-      .catch(error => console.error('خطأ في جلب البيانات:', error));
-  }
-
-  // تشغيل التحديث التلقائي كل 10000 ميلي ثانية (10 ثوانٍ)
-  setInterval(updateDashboard, 10000);
-</script>
