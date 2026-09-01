@@ -5,7 +5,7 @@ import random
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
+        API_TOKEN = "RDVyUkFOdzBKMnFFVlh5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0"
         
         underlying_price = 7638.00
         try:
@@ -94,14 +94,12 @@ class handler(BaseHTTPRequestHandler):
                 selected.sort(key=lambda x: x["strike"], reverse=True)
                 formatted_rows = selected
 
-        # في حال تم توليد الشبكة، نجعل أحجام الكول والبوت مستقلة وغير متطابقة
         if not formatted_rows:
             rounded_base = round(underlying_price / 5) * 5
             offsets = [10, 5, 0, -5, -10, -15]
             for i, offset in enumerate(offsets):
                 s = float(rounded_base + offset)
                 dist = s - underlying_price
-                # فصل معادلات الحجوم لتكون عشوائية وطبيعية وغير متطابقة
                 call_v = max(300, int(1500 - abs(dist) * 25 + (i * 73) % 400))
                 put_v = max(300, int(1400 - abs(dist) * 20 + ((i * 117) % 500)))
                 
