@@ -8,18 +8,18 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         
-        # توليد حركة وحيدة متغيرة مع كل تحديث لضمان عدم ثبات الأرقام
-        random.seed(int(time.time() / 3)) # تتغير الحركة كل 3 ثوانٍ
         base_s = 7658.00
         
+        # التدرج بـ قفزات خماسية (مثلاً: +10, +5, 0, -5, -10, -15)
         formatted_rows = []
         offsets = [10, 5, 0, -5, -10, -15]
+        
         for offset in offsets:
             s = base_s + offset
-            c_vol = random.randint(2000, 5500) + abs(offset) * 10
-            p_vol = random.randint(1500, 4500) + abs(offset) * 10
-            c_px = round(max(5.0, 80.0 - offset * 1.5 + random.uniform(-1.5, 1.5)), 1)
-            p_px = round(max(5.0, 50.0 + offset * 1.5 + random.uniform(-1.5, 1.5)), 1)
+            c_vol = random.randint(2000, 5500)
+            p_vol = random.randint(1500, 4500)
+            c_px = round(max(5.0, 80.0 - offset * 1.5), 1)
+            p_px = round(max(5.0, 50.0 + offset * 1.5), 1)
             
             formatted_rows.append({
                 "strike": float(s),
@@ -29,7 +29,6 @@ class handler(BaseHTTPRequestHandler):
                 "put_px": float(p_px)
             })
 
-        # محاولة جلب بيانات حية من الـ API إن توفرت
         try:
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
