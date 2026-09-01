@@ -47,7 +47,7 @@
 
         <!-- تذييل الحالة -->
         <div class="text-center text-[11px] text-gray-400 flex flex-col gap-1 pt-2 border-t border-gray-800">
-            <span>التحديث يتم تلقائياً كل دقيقة مع تتبع ذكي لأعلى سيولة</span>
+            <span>التحديث يتم تلقائياً كل 15 دقيقة مع تتبع ذكي لأعلى سيولة</span>
             <span id="data-source-status" class="text-emerald-400 font-medium">🟢 متصل بالبيانات الحية (Live API)</span>
         </div>
 
@@ -72,7 +72,6 @@
                 const tbody = document.getElementById('rows-container');
                 tbody.innerHTML = '';
 
-                // إيجاد أعلى سيولة (مجموع الكول + البوت أو مجموع الفوليوم) للمقارنة والتظليل
                 let maxVol = -1;
                 let topRow = null;
 
@@ -111,9 +110,9 @@
             }
         }
 
-        // جلب البيانات فوراً ثم كل 60 ثانية
+        // جلب البيانات فوراً ثم كل 15 دقيقة
         fetchSPXData();
-        setInterval(fetchSPXData, 60000);
+        setInterval(fetchSPXData, 15 * 60 * 1000);
     </script>
 </body>
 </html>
