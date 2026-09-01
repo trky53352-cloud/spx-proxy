@@ -6,7 +6,6 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         
-        # 1. جلب سعر SPX المباشر
         underlying_price = 7638.00
         try:
             yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
@@ -22,16 +21,16 @@ class handler(BaseHTTPRequestHandler):
         strikes_map = {}
         has_real_data = False
 
-        # 2. جلب سلسلة الخيارات الحقيقية من marketdata.app
+        # طلب السلسلة مع تحديد أقرب تاريخ استحقاق لضمان جلب البيانات الحية الحقيقية
         try:
-            url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
+            url = f"https://api.marketdata.app/v1/options/chain/SPX/?expiration=nearest&token={API_TOKEN}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             
             with urllib.request.urlopen(req, timeout=5) as api_response:
                 res_body = api_response.read().decode('utf-8')
                 data = json.loads(res_body)
                 
-                if isinstance(data, dict):
+                if isinstance(data, dict) and data.get("s") == "ok":
                     underlying = data.get("underlying")
                     if underlying:
                         if isinstance(underlying, list) and len(underlying) > 0 and underlying[0] is not None:
@@ -64,7 +63,6 @@ class handler(BaseHTTPRequestHandler):
                         side = str(sides[i]).lower() if i < len(sides) and sides[i] is not None else ""
                         vol = int(volumes[i]) if i < len(volumes) and volumes[i] is not None else 0
                         
-                        # حساب السعر الفعلي (الوسط بين Bid و Ask أو الاعتماد على أحدهما)
                         bid_val = float(bids[i]) if i < len(bids) and bids[i] is not None else 0.0
                         ask_val = float(asks[i]) if i < len(asks) and asks[i] is not None else 0.0
                         
@@ -78,22 +76,17 @@ class handler(BaseHTTPRequestHandler):
 
                         if "call" in side:
                             strikes_map[s_float]["call_vol"] += vol
-                            if price > 0: 
-                                strikes_map[s_float]["call_px"] = price
+                            if price > 0: strikes_map[s_float]["call_px"] = price
                         elif "put" in side:
                             strikes_map[s_float]["put_vol"] += vol
-                            if price > 0: 
-                                strikes_map[s_float]["put_px"] = price
+                            if price > 0: strikes_map[s_float]["put_px"] = price
         except Exception:
             pass
 
         formatted_rows = []
         if strikes_map:
             all_rows = list(strikes_map.values())
-            # اختيار السترايكات الأقرب للسعر الحالي
             all_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
-            
-            # فلترة الصفوف التي تحتوي على بيانات حقيقية لعقود نشطة
             valid_rows = [r for r in all_rows if r["call_px"] > 0 or r["put_px"] > 0 or r["call_vol"] > 0 or r["put_vol"] > 0]
             
             if valid_rows:
@@ -102,7 +95,6 @@ class handler(BaseHTTPRequestHandler):
                 formatted_rows = selected
                 has_real_data = True
 
-        # إذا لم يتم جلب صفوف حقيقية كافية من الـ API، نقوم بتقريب السترايكات بناءً على الفواصل الخماسية مع جلب أسعار دقيقة متناسبة مع المسافة من السعر
         if not formatted_rows:
             rounded_base = round(underlying_price / 5) * 5
             offsets = [10, 5, 0, -5, -10, -15]
