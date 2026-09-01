@@ -48,5 +48,6 @@ def get_spx_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# هذا السطر مهم لكي يتعرف Vercel على التطبيق
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run()
