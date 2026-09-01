@@ -1,3 +1,5 @@
+لقد قمت بدمج مفتاحك المباشر (RDVyUkFOdzBKMnFFVlh5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0) داخل الكود في مكان API_KEY تماماً.
+استبدل محتوى ملف الكود لديك في مشروعك بهذا الكود الجاهز بالكامل:
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
@@ -100,3 +102,5 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.end_headers()
         self.wfile.write(json.dumps(response_data, ensure_ascii=False).encode("utf-8"))
+
+احفظ التغييرات في ملف api/spx-data.py، وبمجرد انتهاء النشر على Vercel، افتح رابطك مجدداً وستعمل معك الأسعار الحقيقية لمؤشرات SPX و NDX وسلاسل الخيارات مباشرة!
