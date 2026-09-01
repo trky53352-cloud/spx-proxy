@@ -29,7 +29,7 @@
 
         <div class="text-center text-[11px] text-gray-500 pt-2 border-t border-gray-800 flex justify-between">
             <span>التحديث التلقائي</span>
-            <span class="text-emerald-400 font-medium">كل 15 دقيقة</span>
+            <span class="text-emerald-400 font-medium">كل دقيقة (1m)</span>
         </div>
 
     </div>
@@ -78,7 +78,8 @@
         }
 
         fetchSPXData();
-        setInterval(fetchSPXData, 15 * 60 * 1000);
+        // التحديث كل دقيقة (60,000 ميللي ثانية)
+        setInterval(fetchSPXData, 60 * 1000);
     </script>
 </body>
 </html>
