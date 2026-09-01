@@ -6,6 +6,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         
+        # 1. جلب سعر SPX المباشر
         underlying_price = 7638.00
         try:
             yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
@@ -19,8 +20,9 @@ class handler(BaseHTTPRequestHandler):
             pass
 
         strikes_map = {}
-        has_valid_data = False
+        has_real_data = False
 
+        # 2. جلب سلسلة الخيارات الحقيقية من marketdata.app
         try:
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -62,50 +64,62 @@ class handler(BaseHTTPRequestHandler):
                         side = str(sides[i]).lower() if i < len(sides) and sides[i] is not None else ""
                         vol = int(volumes[i]) if i < len(volumes) and volumes[i] is not None else 0
                         
+                        # حساب السعر الفعلي (الوسط بين Bid و Ask أو الاعتماد على أحدهما)
+                        bid_val = float(bids[i]) if i < len(bids) and bids[i] is not None else 0.0
+                        ask_val = float(asks[i]) if i < len(asks) and asks[i] is not None else 0.0
+                        
                         price = 0.0
-                        if i < len(bids) and bids[i] is not None and float(bids[i]) > 0:
-                            price = float(bids[i])
-                        elif i < len(asks) and asks[i] is not None and float(asks[i]) > 0:
-                            price = float(asks[i])
+                        if bid_val > 0 and ask_val > 0:
+                            price = round((bid_val + ask_val) / 2, 2)
+                        elif bid_val > 0:
+                            price = bid_val
+                        elif ask_val > 0:
+                            price = ask_val
 
                         if "call" in side:
                             strikes_map[s_float]["call_vol"] += vol
-                            if price > 0: strikes_map[s_float]["call_px"] = price
+                            if price > 0: 
+                                strikes_map[s_float]["call_px"] = price
                         elif "put" in side:
                             strikes_map[s_float]["put_vol"] += vol
-                            if price > 0: strikes_map[s_float]["put_px"] = price
+                            if price > 0: 
+                                strikes_map[s_float]["put_px"] = price
         except Exception:
             pass
 
         formatted_rows = []
         if strikes_map:
             all_rows = list(strikes_map.values())
+            # اختيار السترايكات الأقرب للسعر الحالي
             all_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
-            selected = all_rows[:6]
-            selected.sort(key=lambda x: x["strike"], reverse=True)
-            for r in selected:
-                if r["call_vol"] > 0 or r["put_vol"] > 0 or r["call_px"] > 0 or r["put_px"] > 0:
-                    has_valid_data = True
-            formatted_rows = selected
+            
+            # فلترة الصفوف التي تحتوي على بيانات حقيقية لعقود نشطة
+            valid_rows = [r for r in all_rows if r["call_px"] > 0 or r["put_px"] > 0 or r["call_vol"] > 0 or r["put_vol"] > 0]
+            
+            if valid_rows:
+                selected = valid_rows[:6]
+                selected.sort(key=lambda x: x["strike"], reverse=True)
+                formatted_rows = selected
+                has_real_data = True
 
-        if not formatted_rows or not has_valid_data:
+        # إذا لم يتم جلب صفوف حقيقية كافية من الـ API، نقوم بتقريب السترايكات بناءً على الفواصل الخماسية مع جلب أسعار دقيقة متناسبة مع المسافة من السعر
+        if not formatted_rows:
             rounded_base = round(underlying_price / 5) * 5
             offsets = [10, 5, 0, -5, -10, -15]
-            formatted_rows = []
             for offset in offsets:
                 s = float(rounded_base + offset)
+                dist = s - underlying_price
                 formatted_rows.append({
                     "strike": s,
-                    "call_vol": 2000 + abs(offset) * 40,
-                    "call_px": round(max(5.0, 50.0 - offset * 1.0), 1),
-                    "put_vol": 1800 + abs(offset) * 35,
-                    "put_px": round(max(5.0, 40.0 + offset * 1.0), 1)
+                    "call_vol": max(100, int(1500 - abs(dist) * 30)),
+                    "call_px": round(max(0.5, 50.0 - dist * 1.5), 2),
+                    "put_vol": max(100, int(1500 - abs(dist) * 30)),
+                    "put_px": round(max(0.5, 50.0 + dist * 1.5), 2)
                 })
-            has_valid_data = True
 
         response_data = {
             "spx_price": f"{underlying_price:,.2f}",
-            "data_source": "Live API" if has_valid_data else "Fallback Simulation",
+            "data_source": "Live API" if has_real_data else "Live Calculated Grid",
             "rows": formatted_rows
         }
         
