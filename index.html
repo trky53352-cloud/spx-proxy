@@ -49,9 +49,10 @@
             </table>
         </div>
 
-        <!-- تذييل -->
-        <div class="text-center text-xs text-slate-500 pt-1">
-            التحديث يتم تلقائياً كل دقيقة مع تتبع ذكي لأعلى سيولة
+        <!-- تذييل مع مؤشر الحالة الحية -->
+        <div class="flex flex-col items-center pt-1 gap-1">
+            <div class="text-xs text-slate-500">التحديث يتم تلقائياً كل دقيقة مع تتبع ذكي لأعلى سيولة</div>
+            <div id="status-badge" class="text-[11px] font-medium text-slate-400">الحالة: جاري التحقق من الاتصال...</div>
         </div>
 
     </div>
@@ -65,6 +66,16 @@
 
                     // تحديث سعر المؤشر
                     document.getElementById('spx-price').innerText = data.spx_price;
+
+                    // تحديث مؤشر حالة الاتصال (حي أم احتياطي)
+                    const statusBadge = document.getElementById('status-badge');
+                    if (data.data_source === "Live API") {
+                        statusBadge.innerHTML = "🟢 متصل بالبيانات الحية (Live API)";
+                        statusBadge.className = "text-[11px] font-medium text-emerald-400";
+                    } else {
+                        statusBadge.innerHTML = "🟡 يعمل بالنظام الاحتياطي (Simulation)";
+                        statusBadge.className = "text-[11px] font-medium text-amber-400";
+                    }
 
                     const tbody = document.getElementById('table-body');
                     tbody.innerHTML = '';
@@ -81,7 +92,7 @@
                         }
                     });
 
-                    // رسم الصفوف
+                    // رسم الصفوف بقفزات خماسية
                     data.rows.forEach(row => {
                         const isTop = topStrikeInfo && row.strike === topStrikeInfo.strike;
                         const tr = document.createElement('tr');
