@@ -130,3 +130,21 @@
 
 </body>
 </html>
+<script>
+  // دالة لجلب البيانات وتحديث الواجهة كل 10 ثوانٍ مثلاً
+  function updateDashboard() {
+    fetch('/api/spx-data')
+      .then(response => response.json())
+      .then(data => {
+        // هنا يمكنك تحديث العناصر الموجودة في الصفحة بالسعر الجديد أو بيانات العقود الواردة من الـ API
+        console.log("تم تحديث البيانات بنجاح:", data);
+        
+        // مثال: لو كنت تريد تحديث سعر SPX بشكل آلي في العنصر الخاص به
+        // document.getElementById('spx-price').innerText = data.price;
+      })
+      .catch(error => console.error('خطأ في جلب البيانات:', error));
+  }
+
+  // تشغيل التحديث التلقائي كل 10000 ميلي ثانية (10 ثوانٍ)
+  setInterval(updateDashboard, 10000);
+</script>
