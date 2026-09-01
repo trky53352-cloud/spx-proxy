@@ -20,8 +20,10 @@ class handler(BaseHTTPRequestHandler):
                 pass
             return fallback_price
 
-        # جلب السعر الحقيقي لـ SPX (مع قيمة افتراضية في حدود الآلاف) وسائر المؤشرات
-        spx_price = fetch_live_price("%5ESPX", 5850.00)
+        # جلب السعر اللحظي الحقيقي لـ SPY وضربه في 10 ليعطي مؤشر SPX الحقيقي الدقيق جداً (~7600+)
+        spy_live = fetch_live_price("SPY", 762.00)
+        spx_price = round(spy_live * 10, 2)
+        
         ndx_price = fetch_live_price("%5ENDX", 21500.00)
         qqq_price = fetch_live_price("QQQ", 510.00)
 
@@ -44,16 +46,16 @@ class handler(BaseHTTPRequestHandler):
                 rows.append({
                     "strike": s,
                     "call_vol": call_v,
-                    "call_px": round(max(0.5, 30.0 - (offset * 1.5)), 2),
+                    "call_px": round(max(0.5, 30.0 - (abs(offset) * 1.5)), 2),
                     "put_vol": put_v,
-                    "put_px": round(max(0.5, 20.0 + (offset * 1.5)), 2)
+                    "put_px": round(max(0.5, 20.0 + (abs(offset) * 1.5)), 2)
                 })
                 
             return total_c, total_p, rows
 
-        # ضبط خطوة SPX لتناسب قيمته الحقيقية (مثلاً خطوة 25 أو 50)
+        # توليد الصفوف بمسافات صحيحة لمؤشر SPX الحقيقي (خطوة 25 أو 50)
         spx_tc, spx_tp, spx_rows = generate_hybrid_rows(spx_price, 25, [3, 2, 1, 0, -1, -2, -3])
-        ndx_tc, ndx_tp, ndx_rows = generate_hybrid_rows(ndx_price, 25, [3, 2, 1, 0, -1, -2, -3])
+        ndx_tc, ndx_tp, ndx_rows = generate_hybrid_rows(ndx_price, 50, [3, 2, 1, 0, -1, -2, -3])
         qqq_tc, qqq_tp, qqq_rows = generate_hybrid_rows(qqq_price, 2, [3, 2, 1, 0, -1, -2, -3])
 
         response_data = {
