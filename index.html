@@ -36,11 +36,11 @@
             <table class="w-full text-center border-collapse">
                 <thead>
                     <tr class="text-xs text-slate-400 border-b border-slate-700/60">
-                        <th class="py-2 px-1">PUT PX</th>
-                        <th class="py-2 px-1">PUT VOL</th>
-                        <th class="py-2 px-1">CALL PX</th>
-                        <th class="py-2 px-1">CALL VOL</th>
                         <th class="py-2 px-1">STRIKE</th>
+                        <th class="py-2 px-1">CALL VOL</th>
+                        <th class="py-2 px-1">CALL PX</th>
+                        <th class="py-2 px-1">PUT VOL</th>
+                        <th class="py-2 px-1">PUT PX</th>
                     </tr>
                 </thead>
                 <tbody id="table-body" class="text-sm">
@@ -51,7 +51,7 @@
 
         <!-- تذييل -->
         <div class="text-center text-xs text-slate-500 pt-1">
-            التحديث يتم تلقائياً مع تتبع ذكي لأعلى سيولة
+            التحديث يتم تلقائياً كل دقيقة مع تتبع ذكي لأعلى سيولة
         </div>
 
     </div>
@@ -72,7 +72,7 @@
                     let maxTotalVol = -1;
                     let topStrikeInfo = null;
 
-                    // حساب أعلى سيولة (مجموع فوليوم الكول والبوت أو الكول لوحده حسب رغبتك)
+                    // حساب أعلى سيولة
                     data.rows.forEach(row => {
                         const totalVol = (row.call_vol || 0) + (row.put_vol || 0);
                         if (totalVol > maxTotalVol) {
@@ -91,16 +91,16 @@
                         }`;
 
                         tr.innerHTML = `
-                            <td class="py-3 px-1 text-slate-300">${row.put_px}</td>
-                            <td class="py-3 px-1 text-rose-400 font-semibold">${row.put_vol}</td>
-                            <td class="py-3 px-1 text-slate-300">${row.call_px}</td>
-                            <td class="py-3 px-1 text-emerald-400 font-semibold">${row.call_vol}</td>
                             <td class="py-3 px-1 text-amber-300 font-bold">${row.strike}</td>
+                            <td class="py-3 px-1 text-emerald-400 font-semibold">${row.call_vol}</td>
+                            <td class="py-3 px-1 text-slate-300">${row.call_px}</td>
+                            <td class="py-3 px-1 text-rose-400 font-semibold">${row.put_vol}</td>
+                            <td class="py-3 px-1 text-slate-300">${row.put_px}</td>
                         `;
                         tbody.appendChild(tr);
                     });
 
-                    // تحديث شريط التنبيه العبوي لأعلى سيولة
+                    // تحديث شريط التنبيه لأعلى سيولة
                     if (topStrikeInfo) {
                         const alertBox = document.getElementById('top-alert');
                         alertBox.innerHTML = `🔥 أعلى سيولة حالياً: Strike ${topStrikeInfo.strike} (فوليوم كول: ${topStrikeInfo.call_vol} | بوت: ${topStrikeInfo.put_vol})`;
@@ -112,8 +112,8 @@
         // تشغيل فوري عند فتح الصفحة
         updateDashboard();
 
-        // تحديث تلقائي كل 3 ثوانٍ
-        setInterval(updateDashboard, 3000);
+        // تحديث تلقائي كل دقيقة واحدة (60000 ميلي ثانية)
+        setInterval(updateDashboard, 60000);
     </script>
 </body>
 </html>
