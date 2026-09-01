@@ -6,9 +6,10 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         try:
+            # إضافة بارامترات تطلب أحدث بيانات متاحة
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             
-            req = urllib.request.Request(url)
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             
             with urllib.request.urlopen(req, timeout=10) as api_response:
                 res_body = api_response.read().decode('utf-8')
@@ -18,9 +19,10 @@ class handler(BaseHTTPRequestHandler):
                 
                 if isinstance(data, dict):
                     strikes = data.get("strike", [])
-                    call_vol = data.get("callVolume", [])
+                    # فحص عدة احتمالات لأسماء حقول الفوليوم والأسعار في الـ API
+                    call_vol = data.get("callVolume") or data.get("volume", [])
                     put_vol = data.get("putVolume", [])
-                    call_px = data.get("callBid", [])
+                    call_px = data.get("callBid") or data.get("bid", [])
                     put_px = data.get("putBid", [])
 
                     for i in range(len(strikes)):
@@ -28,8 +30,8 @@ class handler(BaseHTTPRequestHandler):
                         if strike_val is None:
                             continue
                         
-                        # تصفية السترايكات لتكون قريبة من السعر الحالي 7658 (مثلاً بين 7550 و 7750)
-                        if 7550 <= strike_val <= 7750:
+                        # نطاق واسع حول 7658 لضمان التقاط العقود النشطة
+                        if 7500 <= strike_val <= 7800:
                             c_vol = call_vol[i] if i < len(call_vol) and call_vol[i] is not None else 0
                             p_vol = put_vol[i] if i < len(put_vol) and put_vol[i] is not None else 0
                             c_px = call_px[i] if i < len(call_px) and call_px[i] is not None else 0
