@@ -1,29 +1,42 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
+import os
 import random
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        def fetch_live_price(symbol, fallback_price):
+        # استبدل هذه المفاتيح بقيم حسابك أو اجعلها تُقرأ من متغيرات البيئة
+        API_KEY = os.environ.get("APCA_API_KEY_ID", "YOUR_API_KEY")
+        API_SECRET = os.environ.get("APCA_API_SECRET_KEY", "YOUR_SECRET_KEY")
+        
+        # استخدام رابط الـ Live أو Paper حسب حسابك (افتراضي Live Data endpoint)
+        BASE_URL = "https://data.alpaca.markets/v2/stocks"
+
+        def fetch_alpaca_price(symbol, fallback_price):
             try:
-                url = f"https://query1.finance.yahoo.com/v1/finance/quote?symbols={symbol}"
-                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                url = f"{BASE_URL}/{symbol}/quotes/latest"
+                req = urllib.request.Request(url, headers={
+                    'APCA-API-KEY-ID': API_KEY,
+                    'APCA-API-SECRET-KEY': API_SECRET,
+                    'Accept': 'application/json'
+                })
                 with urllib.request.urlopen(req, timeout=3) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
-                    res = data.get('quoteResponse', {}).get('result', [])
-                    if res:
-                        price = res[0].get('regularMarketPrice') or res[0].get('chartPreviousClose')
-                        if price:
-                            return float(price)
-            except Exception:
-                pass
+                    # استخراج سعر الـ Ask أو Bid أو الأخير من Alpaca
+                    quote = data.get('quote', {})
+                    price = quote.get('ap') or quote.get('bp') or quote.get('p')
+                    if price:
+                        return float(price)
+            except Exception as e:
+                print(f"Alpaca Error for {symbol}: {e}")
             return fallback_price
 
-        # جلب الأسعار الحقيقية
-        spy_live = fetch_live_price("SPY", 762.00)
+        # جلب الأسعار اللحظية الحقيقية من Alpaca
+        spy_live = fetch_alpaca_price("SPY", 762.00)
         spx_price = round(spy_live * 10, 2)
-        qqq_price = fetch_live_price("QQQ", 707.77)
+        
+        qqq_price = fetch_alpaca_price("QQQ", 707.77)
         ndx_price = round(qqq_price * 30.5, 2)
 
         def generate_hybrid_rows(price, step, offsets):
@@ -52,7 +65,6 @@ class handler(BaseHTTPRequestHandler):
                 
             return total_c, total_p, rows
 
-        # تم ضبط خطوة SPX لتصبح 5 نقاط بناءً على طلبك
         spx_tc, spx_tp, spx_rows = generate_hybrid_rows(spx_price, 5, [3, 2, 1, 0, -1, -2, -3])
         ndx_tc, ndx_tp, ndx_rows = generate_hybrid_rows(ndx_price, 100, [3, 2, 1, 0, -1, -2, -3])
         qqq_tc, qqq_tp, qqq_rows = generate_hybrid_rows(qqq_price, 2, [3, 2, 1, 0, -1, -2, -3])
