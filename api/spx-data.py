@@ -6,9 +6,11 @@ class handler(BaseHTTPRequestHandler):
         underlying_price = 7626.00
         base_strike = round(underlying_price / 5) * 5
         
-        # السترايكات مرتبطة بالسعر الحالي 7626 (سيكون الأساس قرب 7625 أو 7630)
         offsets = [15, 10, 5, 0, -5, -10, -15]
         formatted_rows = []
+        
+        total_calls = 0
+        total_puts = 0
         
         for i, offset in enumerate(offsets):
             s = float(base_strike + offset)
@@ -18,6 +20,9 @@ class handler(BaseHTTPRequestHandler):
             put_v = int(120000 - (dist * 2200) - (i * 1000))
             if call_v < 30000: call_v = 35000
             if put_v < 25000: put_v = 28000
+            
+            total_calls += call_v
+            total_puts += put_v
             
             formatted_rows.append({
                 "strike": s,
@@ -29,6 +34,8 @@ class handler(BaseHTTPRequestHandler):
 
         response_data = {
             "spx_price": f"{underlying_price:,.2f}",
+            "total_call_vol": total_calls,
+            "total_put_vol": total_puts,
             "data_source": "Live API",
             "rows": formatted_rows
         }
