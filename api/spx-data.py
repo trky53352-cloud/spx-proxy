@@ -4,9 +4,8 @@ import urllib.request
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        API_TOKEN = "VUpqc1VmNjhpPrzh2Ti14VnFFNWJiCjU9LdE5oQTV6TzhBQjhRZ25OdmNTT0"
+        API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         try:
-            # تجربة إرسال التوكن عبر الـ Query Parameter إذا كان الـ Bearer يسبب مشكلة
             url = f"https://api.marketdata.app/v1/options/chain/SPX/?token={API_TOKEN}"
             
             req = urllib.request.Request(url)
