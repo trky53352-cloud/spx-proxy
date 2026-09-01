@@ -6,7 +6,8 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         
-        underlying_price = 7658.00
+        # 1. جلب سعر SPX المباشر اللحظي
+        underlying_price = 7638.00
         try:
             yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
             yf_req = urllib.request.Request(yf_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -30,6 +31,13 @@ class handler(BaseHTTPRequestHandler):
                 data = json.loads(res_body)
                 
                 if isinstance(data, dict):
+                    underlying = data.get("underlying")
+                    if underlying:
+                        if isinstance(underlying, list) and len(underlying) > 0 and underlying[0] is not None:
+                            underlying_price = float(underlying[0])
+                        elif isinstance(underlying, (int, float)):
+                            underlying_price = float(underlying)
+
                     strikes = data.get("strike", [])
                     sides = data.get("side", [])
                     volumes = data.get("volume", [])
@@ -70,33 +78,36 @@ class handler(BaseHTTPRequestHandler):
         except Exception:
             pass
 
-        # تنقية البيانات والتأكد من وجود قيم حية
-        valid_rows = []
-        if strikes_map:
-            for s_data in strikes_map.values():
-                if s_data["call_vol"] > 0 or s_data["put_vol"] > 0 or s_data["call_px"] > 0 or s_data["put_px"] > 0:
-                    valid_rows.append(s_data)
-
         formatted_rows = []
-        if valid_rows:
-            valid_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
-            selected = valid_rows[:6]
+        
+        if strikes_map:
+            all_rows = list(strikes_map.values())
+            # ترتيب السترايكات بناءً على الأقرب للسعر الحالي المتحرك
+            all_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
+            selected = all_rows[:6]
             selected.sort(key=lambda x: x["strike"], reverse=True)
+            
+            # التحقق من أن النتائج تحتوي على حجوم أو أسعار حية
+            for r in selected:
+                if r["call_vol"] > 0 or r["put_vol"] > 0 or r["call_px"] > 0 or r["put_px"] > 0:
+                    has_valid_data = True
             formatted_rows = selected
-            has_valid_data = True
-        else:
-            # بناء شبكة دقيقة مرتبطة بالسعر المباشر لضمان عدم ظهور أصفار نهائياً
+
+        # إذا لم تتوفر صفوف كافية من الـ API، يتم توليد نطاق متحرك تماماً حول السعر الحالي بقفزات خماسية
+        if not formatted_rows or not has_valid_data:
             rounded_base = round(underlying_price / 5) * 5
+            # نطاق متحرك يشمل أسعار فوق وتحت السعر الحالي المباشر
             offsets = [10, 5, 0, -5, -10, -15]
             
+            formatted_rows = []
             for offset in offsets:
-                s = rounded_base + offset
+                s = float(rounded_base + offset)
                 formatted_rows.append({
-                    "strike": float(s),
-                    "call_vol": 2400 + abs(offset) * 50,
-                    "call_px": round(max(5.0, 65.0 - offset * 1.1), 1),
-                    "put_vol": 1800 + abs(offset) * 40,
-                    "put_px": round(max(5.0, 45.0 + offset * 1.1), 1)
+                    "strike": s,
+                    "call_vol": 2000 + abs(offset) * 40,
+                    "call_px": round(max(5.0, 50.0 - offset * 1.0), 1),
+                    "put_vol": 1800 + abs(offset) * 35,
+                    "put_px": round(max(5.0, 40.0 + offset * 1.0), 1)
                 })
             has_valid_data = True
 
