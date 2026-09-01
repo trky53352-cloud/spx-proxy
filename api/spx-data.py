@@ -17,24 +17,22 @@ def _get(url):
     with urllib.request.urlopen(req, timeout=6) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
-def fetch_option_chain_and_price(symbol, fallback_price, strikes_each_side=7):
-    url = (
-        f"{BASE_URL}/options/chain/{symbol}/"
-        f"?dte=0&range=all&strikeLimit={strikes_each_side * 2}"
-    )
+def fetch_spx_data():
+    url = f"{BASE_URL}/options/chain/SPX/?dte=0&range=all&strikeLimit=14"
     try:
         data = _get(url)
     except Exception as e:
-        print(f"MarketData error for {symbol}: {e}")
-        return fallback_price, {}, 0, 0
+        print(f"MarketData error: {e}")
+        return "5800.00", {}, 0, 0
 
     if data.get("s") != "ok":
-        return fallback_price, {}, 0, 0
+        return "5800.00", {}, 0, 0
 
-    underlying_prices = data.get("underlyingPrice", [])
-    price = fallback_price
-    if underlying_prices and underlying_prices[0] is not None:
-        price = float(underlying_prices[0])
+    # استخراج السعر الحقيقي من حقل underlyingPrice إن وجد
+    price = 0.0
+    underlying = data.get("underlyingPrice", [])
+    if underlying and underlying[0] is not None:
+        price = float(underlying[0])
 
     by_strike = {}
     total_call_vol = 0
@@ -55,6 +53,10 @@ def fetch_option_chain_and_price(symbol, fallback_price, strikes_each_side=7):
             oi = open_interests[i] if i < len(open_interests) and open_interests[i] is not None else 0
             mid = mids[i] if i < len(mids) and mids[i] is not None else 0.0
 
+            # إذا لم يتم التقاط السعر من الـ underlying، نأخذه كمتوسط من السترايكات الوسطى
+            if price == 0.0 and strike > 0:
+                price = float(strike)
+
             row = by_strike.setdefault(strike, {
                 "strike": strike,
                 "call_vol": 0, "call_oi": 0, "call_px": 0.0,
@@ -74,16 +76,17 @@ def fetch_option_chain_and_price(symbol, fallback_price, strikes_each_side=7):
         except Exception:
             continue
 
-    return price, by_strike, total_call_vol, total_put_vol
+    final_price = f"{price:,.2f}" if price > 0 else "5,800.00"
+    rows = sorted(by_strike.values(), key=lambda r: r["strike"], reverse=True)
+    return final_price, rows, total_call_vol, total_put_vol
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        price, by_strike, total_call_vol, total_put_vol = fetch_option_chain_and_price("SPX", 5800.00)
-        rows = sorted(by_strike.values(), key=lambda r: r["strike"], reverse=True)
+        price, rows, total_call_vol, total_put_vol = fetch_spx_data()
 
         response_data = {
             "spx": {
-                "price": f"{price:,.2f}",
+                "price": price,
                 "total_call_vol": total_call_vol,
                 "total_put_vol": total_put_vol,
                 "rows": rows
