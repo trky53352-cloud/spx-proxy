@@ -23,13 +23,19 @@ class handler(BaseHTTPRequestHandler):
                     put_px = data.get("putBid", [])
 
                     for i in range(len(strikes)):
-                        formatted_rows.append({
-                            "strike": strikes[i],
-                            "call_vol": call_vol[i] if i < len(call_vol) else 0,
-                            "put_vol": put_vol[i] if i < len(put_vol) else 0,
-                            "call_px": call_px[i] if i < len(call_px) else 0,
-                            "put_px": put_px[i] if i < len(put_px) else 0
-                        })
+                        # تصفية السترايكات لتكون قرب السعر الحالي (مثلاً بين 7500 و 7800) لعدم جلب آلاف السطور الفارغة
+                        strike_val = strikes[i]
+                        if 7500 <= strike_val <= 7850:
+                            formatted_rows.append({
+                                "strike": strike_val,
+                                "call_vol": call_vol[i] if i < len(call_vol) else 0,
+                                "put_vol": put_vol[i] if i < len(put_vol) else 0,
+                                "call_px": call_px[i] if i < len(call_px) else 0,
+                                "put_px": put_px[i] if i < len(put_px) else 0
+                            })
+
+                # ترتيب السترايكات تنازلياً ليتطابق مع شكل الواجهة المطلوبة
+                formatted_rows.sort(key=lambda x: x["strike"], reverse=True)
 
                 response_data = {
                     "spx_price": "7,686.62",
