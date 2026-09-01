@@ -6,7 +6,6 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         API_TOKEN = "VUpqc1VmNjhpRzh2Ti14VnFFNWJicU9LdE5oQTV6TzhBQjhRZ25OdmNMTT0"
         
-        # 1. جلب سعر SPX المباشر اللحظي
         underlying_price = 7638.00
         try:
             yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
@@ -79,26 +78,19 @@ class handler(BaseHTTPRequestHandler):
             pass
 
         formatted_rows = []
-        
         if strikes_map:
             all_rows = list(strikes_map.values())
-            # ترتيب السترايكات بناءً على الأقرب للسعر الحالي المتحرك
             all_rows.sort(key=lambda x: abs(x["strike"] - underlying_price))
             selected = all_rows[:6]
             selected.sort(key=lambda x: x["strike"], reverse=True)
-            
-            # التحقق من أن النتائج تحتوي على حجوم أو أسعار حية
             for r in selected:
                 if r["call_vol"] > 0 or r["put_vol"] > 0 or r["call_px"] > 0 or r["put_px"] > 0:
                     has_valid_data = True
             formatted_rows = selected
 
-        # إذا لم تتوفر صفوف كافية من الـ API، يتم توليد نطاق متحرك تماماً حول السعر الحالي بقفزات خماسية
         if not formatted_rows or not has_valid_data:
             rounded_base = round(underlying_price / 5) * 5
-            # نطاق متحرك يشمل أسعار فوق وتحت السعر الحالي المباشر
             offsets = [10, 5, 0, -5, -10, -15]
-            
             formatted_rows = []
             for offset in offsets:
                 s = float(rounded_base + offset)
