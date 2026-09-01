@@ -1,11 +1,26 @@
 from http.server import BaseHTTPRequestHandler
 import json
+import urllib.request
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        underlying_price = 7626.00
-        base_strike = round(underlying_price / 5) * 5
+        # القيمة الافتراضية في حال تعذر جلب السعر اللحظي
+        underlying_price = 7630.40
         
+        try:
+            # جلب السعر اللحظي لمؤشر SPX مباشرة من ياهو فاينانس
+            yf_url = "https://query1.finance.yahoo.com/v1/finance/quote?symbols=%5ESPX"
+            yf_req = urllib.request.Request(yf_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(yf_req, timeout=3) as yf_resp:
+                yf_data = json.loads(yf_resp.read().decode('utf-8'))
+                price_val = yf_data.get('quoteResponse', {}).get('result', [{}])[0].get('regularMarketPrice')
+                if price_val:
+                    underlying_price = float(price_val)
+        except Exception:
+            pass
+
+        # بناء السترايكات تلقائياً بحيث تتمركز بدقة حول السعر الحقيقي الجاري
+        base_strike = round(underlying_price / 5) * 5
         offsets = [15, 10, 5, 0, -5, -10, -15]
         formatted_rows = []
         
