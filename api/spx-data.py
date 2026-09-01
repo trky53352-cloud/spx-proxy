@@ -27,7 +27,7 @@ class handler(BaseHTTPRequestHandler):
                         strike_val = strikes[i]
                         if strike_val is None:
                             continue
-                        
+                            
                         c_vol = call_vol[i] if i < len(call_vol) and call_vol[i] is not None else 0
                         p_vol = put_vol[i] if i < len(put_vol) and put_vol[i] is not None else 0
                         c_px = call_px[i] if i < len(call_px) and call_px[i] is not None else 0
@@ -45,7 +45,14 @@ class handler(BaseHTTPRequestHandler):
                             strikes_map[strike_val]["call_vol"] += int(c_vol)
                             strikes_map[strike_val]["put_vol"] += int(p_vol)
 
-                formatted_rows = list(strikes_map.values())
+                all_rows = list(strikes_map.values())
+                
+                # اختيار أقرب 6 سترايكات فقط لسعر السوق الحالي 7658
+                target_price = 7658.0
+                all_rows.sort(key=lambda x: abs(x["strike"] - target_price))
+                formatted_rows = all_rows[:6]
+                
+                # ترتيبها تنازلياً للعرض في الجدول
                 formatted_rows.sort(key=lambda x: x["strike"], reverse=True)
 
                 response_data = {
