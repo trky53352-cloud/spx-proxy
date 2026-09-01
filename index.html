@@ -63,7 +63,6 @@
         .call-vol { color: #10b981; font-weight: bold; }
         .put-vol { color: #ef4444; font-weight: bold; }
         
-        /* تنسيق خاص للصف الذي يحمل أعلى فوليم */
         .highlight-row {
             background-color: rgba(251, 191, 36, 0.15) !important;
             border: 2px solid #fbbf24;
@@ -86,11 +85,11 @@
         <h2>مراقب سيولة وعقود SPX اللحظية</h2>
         
         <div class="price-box" id="spx-price-box">
-            سعر SPX الآن: <span id="spx-price">7,686.62</span>
+            سعر SPX الآن: <span id="spx-price">جاري التحميل...</span>
         </div>
 
         <div class="alert-banner" id="alert-box">
-            🔥 أعلى تركيز سيولة (فوليم): جاري التحليل...
+            🔥 أعلى تركيز سيولة (فوليم): جاري الاتصال بالسوق...
         </div>
 
         <table>
@@ -104,116 +103,88 @@
                 </tr>
             </thead>
             <tbody id="market-table-body">
-                <tr data-strike="7690">
-                    <td>0.45</td>
-                    <td class="put-vol">19</td>
-                    <td>29.70</td>
-                    <td class="call-vol">87</td>
-                    <td>7690</td>
-                </tr>
-                <tr data-strike="7685">
-                    <td>0.65</td>
-                    <td class="put-vol">34</td>
-                    <td>24.90</td>
-                    <td class="call-vol">115</td>
-                    <td>7685</td>
-                </tr>
-                <tr data-strike="7680">
-                    <td>1.00</td>
-                    <td class="put-vol">33</td>
-                    <td>20.20</td>
-                    <td class="call-vol">145</td>
-                    <td>7680</td>
-                </tr>
-                <tr data-strike="7675">
-                    <td>1.65</td>
-                    <td class="put-vol">15</td>
-                    <td>15.80</td>
-                    <td class="call-vol">141</td>
-                    <td>7675</td>
-                </tr>
-                <tr data-strike="7670">
-                    <td>2.70</td>
-                    <td class="put-vol">2</td>
-                    <td>12.10</td>
-                    <td class="call-vol">108</td>
-                    <td>7670</td>
-                </tr>
-                <tr data-strike="7665">
-                    <td>4.40</td>
-                    <td class="put-vol">44</td>
-                    <td>8.60</td>
-                    <td class="call-vol">95</td>
-                    <td>7665</td>
-                </tr>
-                <tr data-strike="7660">
-                    <td>92.06</td>
-                    <td class="put-vol">36</td>
-                    <td>6.00</td>
-                    <td class="call-vol">3058</td>
-                    <td>7660</td>
-                </tr>
+                <!-- سيتم تعبئة البيانات حياً من الـ API -->
             </tbody>
         </table>
 
         <div class="footer-note">
-            التحديث يتم تلقائياً مع تتبع ذكي لأعلى سيولة
+            التحديث يتم تلقائياً عبر سحابة المراقبة الذكية
         </div>
     </div>
 
     <script>
-        function highlightHighestVolume() {
-            const rows = document.querySelectorAll('#market-table-body tr');
-            let maxVol = 0;
-            let maxRow = null;
-            let maxDetails = "";
-
-            rows.call = rows.forEach; // safe iteration
-            rows.forEach(row => {
-                row.classList.remove('highlight-row');
-                const callVolCell = row.querySelector('.call-vol');
-                const putVolCell = row.querySelector('.put-vol');
-                const strikeCell = row.querySelector('td:last-child');
-
-                const callVol = parseInt(callVolCell.innerText) || 0;
-                const putVol = parseInt(putVolCell.innerText) || 0;
-                const strike = strikeCell.innerText;
-
-                // مقارنة لايجاد الأعلى سواء في الـ Call أو الـ Put
-                if (callVol > maxVol) {
-                    maxVol = callVol;
-                    maxRow = row;
-                    maxDetails = `Strike ${strike} (شراء Call بفوليم: ${maxVol})`;
-                }
-                if (putVol > maxVol) {
-                    maxVol = putVol;
-                    maxRow = row;
-                    maxDetails = `Strike ${strike} (بيع Put بفوليم: ${maxVol})`;
-                }
-            });
-
-            if (maxRow) {
-                maxRow.classList.add('highlight-row');
-                document.getElementById('alert-box').innerHTML = `🚨 أعلى سيولة حالياً: ${maxDetails}`;
-            }
-        }
-
-        // تشغيل فحص أعلى فوليم عند تحميل الصفحة وتحديثه دورياً
-        highlightHighestVolume();
-
-        function updateDashboard() {
+        function fetchMarketData() {
             fetch('/api/spx-data')
                 .then(response => response.json())
                 .then(data => {
-                    console.log("تم تحديث البيانات الحية بنجاح:", data);
-                    highlightHighestVolume();
+                    // تحديث سعر SPX العام إذا توفر
+                    if(data.spx_price) {
+                        document.getElementById('spx-price').innerText = data.spx_price;
+                    }
+
+                    const tbody = document.getElementById('market-table-body');
+                    tbody.innerHTML = ""; // تفريغ الجدول القديم
+
+                    let maxVol = 0;
+                    let maxRowNode = null;
+                    let maxDetails = "";
+
+                    // افترضنا أن البيانات تأتي على شكل مصفوفة صفوف (rows) من الـ API
+                    // إذا كانت البنية مختلفة قليلاً، سنقوم بمطابقتها
+                    const rowsData = data.rows || []; 
+
+                    if(rowsData.length === 0) {
+                        // بيانات افتراضية في حال عدم توفر مصفوفة لضمان استمرار العرض
+                        tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;">لا توجد بيانات متاحة حالياً من المزود</td></tr>`;
+                        return;
+                    }
+
+                    rowsData.forEach(row => {
+                        const tr = document.createElement('tr');
+                        
+                        const callVol = parseInt(row.call_vol) || 0;
+                        const putVol = parseInt(row.put_vol) || 0;
+                        const strike = row.strike;
+
+                        tr.innerHTML = `
+                            <td>${row.put_px || 0}</td>
+                            <td class="put-vol">${putVol}</td>
+                            <td>${row.call_px || 0}</td>
+                            <td class="call-vol">${callVol}</td>
+                            <td>${strike}</td>
+                        `;
+
+                        // تتبع أعلى فوليم
+                        if (callVol > maxVol) {
+                            maxVol = callVol;
+                            maxRowNode = tr;
+                            maxDetails = `Strike ${strike} (شراء Call بفوليم: ${maxVol})`;
+                        }
+                        if (putVol > maxVol) {
+                            maxVol = putVol;
+                            maxRowNode = tr;
+                            maxDetails = `Strike ${strike} (بيع Put بفوليم: ${maxVol})`;
+                        }
+
+                        tbody.appendChild(tr);
+                    });
+
+                    // تمييز أعلى فوليم وإظهار التنبيه
+                    if (maxRowNode) {
+                        maxRowNode.classList.add('highlight-row');
+                        document.getElementById('alert-box').innerHTML = `🚨 أعلى سيولة حالياً: ${maxDetails}`;
+                    }
+
                 })
                 .catch(error => {
-                    console.log("جارٍ مزامنة بيانات السوق...", error);
+                    console.log("خطأ في جلب بيانات الـ API:", error);
+                    document.getElementById('alert-box').innerHTML = `⚠️ جاري إعادة الاتصال بمزود البيانات...`;
                 });
         }
 
-        setInterval(updateDashboard, 10000);
+        // جلب البيانات فور فتح الصفحة وتحديثها كل 10 ثوانٍ
+        fetchMarketData();
+        setInterval(fetchMarketData, 10000);
     </script>
 </body>
 </html>
