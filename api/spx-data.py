@@ -20,14 +20,10 @@ class handler(BaseHTTPRequestHandler):
                 pass
             return fallback_price
 
-        # جلب الأسعار الحقيقية والمحدثة بدقة
+        # جلب الأسعار الحقيقية
         spy_live = fetch_live_price("SPY", 762.00)
         spx_price = round(spy_live * 10, 2)
-        
-        # جلب سعر QQQ الحقيقي الموثوق
         qqq_price = fetch_live_price("QQQ", 707.77)
-        
-        # ربط مؤشر ناسداك NDX بقيمة QQQ الحقيقية لضمان الدقة المطلقة (حيث أن NDX يقارب QQQ × 30.5)
         ndx_price = round(qqq_price * 30.5, 2)
 
         def generate_hybrid_rows(price, step, offsets):
@@ -56,8 +52,8 @@ class handler(BaseHTTPRequestHandler):
                 
             return total_c, total_p, rows
 
-        # توليد الصفوف والسترايكات بخطوات مناسبة للأسعار الحقيقية
-        spx_tc, spx_tp, spx_rows = generate_hybrid_rows(spx_price, 25, [3, 2, 1, 0, -1, -2, -3])
+        # تم ضبط خطوة SPX لتصبح 5 نقاط بناءً على طلبك
+        spx_tc, spx_tp, spx_rows = generate_hybrid_rows(spx_price, 5, [3, 2, 1, 0, -1, -2, -3])
         ndx_tc, ndx_tp, ndx_rows = generate_hybrid_rows(ndx_price, 100, [3, 2, 1, 0, -1, -2, -3])
         qqq_tc, qqq_tp, qqq_rows = generate_hybrid_rows(qqq_price, 2, [3, 2, 1, 0, -1, -2, -3])
 
