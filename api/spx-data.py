@@ -20,8 +20,8 @@ class handler(BaseHTTPRequestHandler):
                 pass
             return fallback_price
 
-        # جلب الأسعار اللحظية الحقيقية (باستخدام SPY كبديل دقيق لـ SPX)
-        spy_price = fetch_live_price("SPY", 585.00)
+        # جلب السعر الحقيقي لـ SPX (مع قيمة افتراضية في حدود الآلاف) وسائر المؤشرات
+        spx_price = fetch_live_price("%5ESPX", 5850.00)
         ndx_price = fetch_live_price("%5ENDX", 21500.00)
         qqq_price = fetch_live_price("QQQ", 510.00)
 
@@ -35,7 +35,6 @@ class handler(BaseHTTPRequestHandler):
                 s = float(base_strike + (offset * step))
                 dist = abs(s - price)
                 
-                # حساب فوليوم واقعي بناءً على القرب من السعر الحالي
                 call_v = int(max(25000, 150000 - (dist * 2000) + random.randint(-5000, 5000)))
                 put_v = int(max(20000, 130000 - (dist * 1800) + random.randint(-4000, 4000)))
                 
@@ -52,17 +51,17 @@ class handler(BaseHTTPRequestHandler):
                 
             return total_c, total_p, rows
 
-        # توليد الصفوف والمجاميع لكل أصل
-        spy_tc, spy_tp, spy_rows = generate_hybrid_rows(spy_price, 2, [3, 2, 1, 0, -1, -2, -3])
+        # ضبط خطوة SPX لتناسب قيمته الحقيقية (مثلاً خطوة 25 أو 50)
+        spx_tc, spx_tp, spx_rows = generate_hybrid_rows(spx_price, 25, [3, 2, 1, 0, -1, -2, -3])
         ndx_tc, ndx_tp, ndx_rows = generate_hybrid_rows(ndx_price, 25, [3, 2, 1, 0, -1, -2, -3])
         qqq_tc, qqq_tp, qqq_rows = generate_hybrid_rows(qqq_price, 2, [3, 2, 1, 0, -1, -2, -3])
 
         response_data = {
             "spx": {
-                "price": f"{spy_price:,.2f}",
-                "total_call_vol": spy_tc,
-                "total_put_vol": spy_tp,
-                "rows": spy_rows
+                "price": f"{spx_price:,.2f}",
+                "total_call_vol": spx_tc,
+                "total_put_vol": spx_tp,
+                "rows": spx_rows
             },
             "ndx": {
                 "price": f"{ndx_price:,.2f}",
