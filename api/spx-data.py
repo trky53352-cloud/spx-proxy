@@ -3,7 +3,7 @@ import json
 import urllib.request
 import urllib.error
 
-API_KEY = "AFRTZHJWbk9yY0xkYWRFc2xOcXN6dTdwM0RRWjFFcGdxbS1xM1RRYUg4RT0"
+API_KEY = "aFRTZHJWbk9yY0xkYWRFc2xOcXN6dTdwM0RRWjFFcGdxbS1xM1RRYUg4RT0"
 BASE_URL = "https://api.marketdata.app/v1"
 
 class handler(BaseHTTPRequestHandler):
