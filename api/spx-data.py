@@ -9,7 +9,8 @@ BASE_URL = "https://api.marketdata.app/v1"
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            url = f"{BASE_URL}/options/quotes/SPX/?token={API_KEY}"
+            # جلب سلسلة عقود الخيارات لـ SPX مباشرة للسترايقات
+            url = f"{BASE_URL}/options/chain/SPX/?token={API_KEY}"
             req = urllib.request.Request(
                 url,
                 headers={
@@ -21,22 +22,25 @@ class handler(BaseHTTPRequestHandler):
                 response_data = response.read().decode('utf-8')
                 data = json.loads(response_data)
                 
-                mid_price = data.get("mid", [0])
-                price_val = mid_price[0] if isinstance(mid_price, list) and len(mid_price) > 0 else 0.0
+                # استخراج البيانات المتعددة للسترايقات
+                strikes = data.get("strike", [])
+                call_volumes = data.get("callVolume", [])
+                put_volumes = data.get("putVolume", [])
+                expirations = data.get("expiration", [])
                 
-                call_volumes = data.get("callVolume", [0])
-                put_volumes = data.get("putVolume", [0])
-                
-                total_call_vol = sum(call_volumes) if isinstance(call_volumes, list) else 0
-                total_put_vol = sum(put_volumes) if isinstance(put_volumes, list) else 0
+                # تجهيز عينة من السترايقات المباشرة
+                strikes_data = []
+                for i in range(min(len(strikes), 10)):  # جلب أول 10 سترايقات كمثال مباشر
+                    strikes_data.append({
+                        "strike": strikes[i] if i < len(strikes) else 0,
+                        "expiration": expirations[i] if i < len(expirations) else 0,
+                        "call_volume": call_volumes[i] if i < len(call_volumes) else 0,
+                        "put_volume": put_volumes[i] if i < len(put_volumes) else 0
+                    })
 
                 output = {
-                    "spx": {
-                        "price": price_val,
-                        "total_call_vol": total_call_vol,
-                        "total_put_vol": total_put_vol,
-                        "status": "success"
-                    }
+                    "spx_chain": strikes_data,
+                    "status": "success"
                 }
                 
                 self.send_response(200)
@@ -53,13 +57,13 @@ class handler(BaseHTTPRequestHandler):
                 "error_code": e.code,
                 "error_reason": e.reason,
                 "server_response": error_body,
-                "spx": {"price": 0, "total_call_vol": 0, "total_put_vol": 0}
+                "spx_chain": []
             }
             self.wfile.write(json.dumps(error_output).encode('utf-8'))
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            error_output = {"error": str(e), "spx": {"price": 0, "total_call_vol": 0, "total_put_vol": 0}}
+            error_output = {"error": str(e), "spx_chain": []}
             self.wfile.write(json.dumps(error_output).encode('utf-8'))
         return
