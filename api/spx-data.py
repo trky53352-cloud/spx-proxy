@@ -9,7 +9,8 @@ BASE_URL = "https://api.marketdata.app/v1"
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            url = f"{BASE_URL}/options/chain/SPX/?token={API_KEY}"
+            # تمرير معامل strikeCount=7 لطلب 7 سترايقات فقط من المصدر لتوفير الرصيد وتجنب 429
+            url = f"{BASE_URL}/options/chain/SPX/?strikeCount=7&token={API_KEY}"
             req = urllib.request.Request(
                 url,
                 headers={
@@ -26,7 +27,6 @@ class handler(BaseHTTPRequestHandler):
                 put_volumes = data.get("putVolume", [])
                 expirations = data.get("expiration", [])
                 
-                # استخراج 7 سترايقات فقط بدقة
                 strikes_data = []
                 limit = min(7, len(strikes))
                 for i in range(limit):
