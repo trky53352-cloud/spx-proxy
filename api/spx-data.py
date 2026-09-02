@@ -9,13 +9,12 @@ BASE_URL = "https://api.marketdata.app/v1"
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            # إرسال التوكن عبر الـ Headers لتفادي قيود الـ IP المتغيرة
-            url = f"{BASE_URL}/options/chain/SPX/?strikeCount=7"
+            # استخدام نقطة نهاية المؤشر وأقل عدد ممكن من السترايقات لتوفير الرصيد بالكامل
+            url = f"{BASE_URL}/indices/quotes/SPX/?token={API_KEY}"
             req = urllib.request.Request(
                 url,
                 headers={
-                    "Accept": "application/json",
-                    "Authorization": f"Bearer {API_KEY}"
+                    "Accept": "application/json"
                 }
             )
             
@@ -23,24 +22,15 @@ class handler(BaseHTTPRequestHandler):
                 response_data = response.read().decode('utf-8')
                 data = json.loads(response_data)
                 
-                strikes = data.get("strike", [])
-                call_volumes = data.get("callVolume", [])
-                put_volumes = data.get("putVolume", [])
-                expirations = data.get("expiration", [])
-                
-                strikes_data = []
-                limit = min(7, len(strikes))
-                for i in range(limit):
-                    strikes_data.append({
-                        "strike": strikes[i],
-                        "expiration": expirations[i] if i < len(expirations) else 0,
-                        "call_volume": call_volumes[i] if i < len(call_volumes) else 0,
-                        "put_volume": put_volumes[i] if i < len(put_volumes) else 0
-                    })
+                mid_price = data.get("mid", [0])
+                price_val = mid_price[0] if isinstance(mid_price, list) and len(mid_price) > 0 else data.get("price", 0)
 
                 output = {
-                    "spx_chain_7": strikes_data,
-                    "status": "success"
+                    "spx": {
+                        "price": price_val,
+                        "status": "success",
+                        "note": "Optimized lightweight request to save API credits."
+                    }
                 }
                 
                 self.send_response(200)
@@ -57,13 +47,13 @@ class handler(BaseHTTPRequestHandler):
                 "error_code": e.code,
                 "error_reason": e.reason,
                 "server_response": error_body,
-                "spx_chain_7": []
+                "spx": {"price": 0}
             }
             self.wfile.write(json.dumps(error_output).encode('utf-8'))
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            error_output = {"error": str(e), "spx_chain_7": []}
+            error_output = {"error": str(e), "spx": {"price": 0}}
             self.wfile.write(json.dumps(error_output).encode('utf-8'))
         return
