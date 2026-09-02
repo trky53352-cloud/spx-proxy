@@ -9,7 +9,6 @@ BASE_URL = "https://api.marketdata.app/v1"
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            # جلب سلسلة عقود الخيارات لـ SPX مباشرة للسترايقات
             url = f"{BASE_URL}/options/chain/SPX/?token={API_KEY}"
             req = urllib.request.Request(
                 url,
@@ -22,24 +21,24 @@ class handler(BaseHTTPRequestHandler):
                 response_data = response.read().decode('utf-8')
                 data = json.loads(response_data)
                 
-                # استخراج البيانات المتعددة للسترايقات
                 strikes = data.get("strike", [])
                 call_volumes = data.get("callVolume", [])
                 put_volumes = data.get("putVolume", [])
                 expirations = data.get("expiration", [])
                 
-                # تجهيز عينة من السترايقات المباشرة
+                # استخراج 7 سترايقات فقط بدقة
                 strikes_data = []
-                for i in range(min(len(strikes), 10)):  # جلب أول 10 سترايقات كمثال مباشر
+                limit = min(7, len(strikes))
+                for i in range(limit):
                     strikes_data.append({
-                        "strike": strikes[i] if i < len(strikes) else 0,
+                        "strike": strikes[i],
                         "expiration": expirations[i] if i < len(expirations) else 0,
                         "call_volume": call_volumes[i] if i < len(call_volumes) else 0,
                         "put_volume": put_volumes[i] if i < len(put_volumes) else 0
                     })
 
                 output = {
-                    "spx_chain": strikes_data,
+                    "spx_chain_7": strikes_data,
                     "status": "success"
                 }
                 
@@ -57,13 +56,13 @@ class handler(BaseHTTPRequestHandler):
                 "error_code": e.code,
                 "error_reason": e.reason,
                 "server_response": error_body,
-                "spx_chain": []
+                "spx_chain_7": []
             }
             self.wfile.write(json.dumps(error_output).encode('utf-8'))
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            error_output = {"error": str(e), "spx_chain": []}
+            error_output = {"error": str(e), "spx_chain_7": []}
             self.wfile.write(json.dumps(error_output).encode('utf-8'))
         return
