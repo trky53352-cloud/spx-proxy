@@ -9,12 +9,13 @@ BASE_URL = "https://api.marketdata.app/v1"
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            # تمرير معامل strikeCount=7 لطلب 7 سترايقات فقط من المصدر لتوفير الرصيد وتجنب 429
-            url = f"{BASE_URL}/options/chain/SPX/?strikeCount=7&token={API_KEY}"
+            # إرسال التوكن عبر الـ Headers لتفادي قيود الـ IP المتغيرة
+            url = f"{BASE_URL}/options/chain/SPX/?strikeCount=7"
             req = urllib.request.Request(
                 url,
                 headers={
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "Authorization": f"Bearer {API_KEY}"
                 }
             )
             
