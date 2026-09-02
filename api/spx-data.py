@@ -8,12 +8,11 @@ BASE_URL = "https://api.marketdata.app/v1"
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            url = f"{BASE_URL}/options/quotes/SPX/"
-            # تعديل طريقة إرسال المفتاح مباشرة في الهيدر حسب توثيق المنصة
+            # تمرير المفتاح مباشرة عبر الـ URL لتجنب رفض الـ Header
+            url = f"{BASE_URL}/options/quotes/SPX/?token={API_KEY}"
             req = urllib.request.Request(
                 url,
                 headers={
-                    "Authorization": f"Token {API_KEY}",
                     "Accept": "application/json"
                 }
             )
