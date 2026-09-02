@@ -1,9 +1,9 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
+import urllib.error
 
-# استخدام مفتاح عام تجريبي للتأكد من عمل الرابط وجلب البيانات
-API_KEY = "secrettoken" 
+API_KEY = "RDVyUkF0dzBKMnFFV1h5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0="
 BASE_URL = "https://api.marketdata.app/v1"
 
 class handler(BaseHTTPRequestHandler):
@@ -44,6 +44,18 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(output).encode('utf-8'))
                 
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode('utf-8', errors='ignore')
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            error_output = {
+                "error_code": e.code,
+                "error_reason": e.reason,
+                "server_response": error_body,
+                "spx": {"price": 0, "total_call_vol": 0, "total_put_vol": 0}
+            }
+            self.wfile.write(json.dumps(error_output).encode('utf-8'))
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
