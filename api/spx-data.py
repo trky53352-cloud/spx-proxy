@@ -2,13 +2,13 @@ from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
 
-API_KEY = "RDVyUkF0dzBKMnFFV1h5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0="
+# استخدام مفتاح عام تجريبي للتأكد من عمل الرابط وجلب البيانات
+API_KEY = "secrettoken" 
 BASE_URL = "https://api.marketdata.app/v1"
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
-            # تمرير المفتاح مباشرة عبر الـ URL لتجنب رفض الـ Header
             url = f"{BASE_URL}/options/quotes/SPX/?token={API_KEY}"
             req = urllib.request.Request(
                 url,
