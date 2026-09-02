@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
 
-API_KEY = "RDVyUkF0dzBKMnFFV1h5RVV5N1Ff"
+API_KEY = "RDVyUkF0dzBKMnFFV1h5RVV5N1FrSzJoRzBKQUtnN0puaEFmc093Ulkzcz0="
 BASE_URL = "https://api.marketdata.app/v1"
 
 class handler(BaseHTTPRequestHandler):
