@@ -9,10 +9,11 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             url = f"{BASE_URL}/options/quotes/SPX/"
+            # تعديل طريقة إرسال المفتاح مباشرة في الهيدر حسب توثيق المنصة
             req = urllib.request.Request(
                 url,
                 headers={
-                    "Authorization": f"Bearer {API_KEY}",
+                    "Authorization": f"Token {API_KEY}",
                     "Accept": "application/json"
                 }
             )
